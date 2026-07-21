@@ -179,10 +179,12 @@ async function uploadLesson(event) {
       const file = selectedFiles[index];
       const safeFileName = (file.name || 'lesson-file').replace(/[^a-zA-Z0-9._-]/g, '_');
       const storagePath = `lessons/${Date.now()}-${index}-${safeFileName}`;
+      const contentDispositionFileName = (file.name || safeFileName).replace(/"/g, '');
 
       const { error: uploadError } = await supabaseClient.storage.from('lessons').upload(storagePath, file, {
         cacheControl: '3600',
-        upsert: false
+        upsert: false,
+        contentDisposition: `attachment; filename="${contentDispositionFileName}"`
       });
       if (uploadError) throw uploadError;
 

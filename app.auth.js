@@ -76,9 +76,10 @@ function escapeHtml(value) {
 }
 
 function getFileIcon(fileName) {
-  const extension = String(fileName).split(".").pop().toLowerCase();
-  if (["html", "js", "css", "jsx", "ts", "tsx"].includes(extension)) return "🌐";
-  if (["zip", "rar", "tar", "gz", "7z"].includes(extension)) return "📦";
+  const extension = String(fileName).split('.').pop().toLowerCase();
+  if (["png", "jpg", "jpeg", "svg", "gif", "bmp", "webp"].includes(extension)) return "🖼️";
+  if (["html", "css", "js", "json", "jsx", "ts", "tsx", "md", "py", "java", "c", "cpp", "cs", "rb", "php"].includes(extension)) return "🌐";
+  if (["zip", "rar", "tar", "gz", "7z", "bz2"].includes(extension)) return "📦";
   if (extension === "pdf") return "📕";
   return "📄";
 }
@@ -147,9 +148,7 @@ function createFileList(lesson) {
                 <a
                   class="lesson-card__download-btn"
                   href="${safeUrl}"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  download
+                  download="${safeName}"
                 >
                   Download
                 </a>

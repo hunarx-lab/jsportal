@@ -37,6 +37,15 @@ function formatDisplayDate(value) {
   return new Intl.DateTimeFormat("en-US", { year: "numeric", month: "long", day: "numeric" }).format(date);
 }
 
+function getFileIcon(fileName) {
+  const extension = String(fileName).split('.').pop().toLowerCase();
+  if (["png", "jpg", "jpeg", "svg", "gif", "bmp", "webp"].includes(extension)) return "🖼️";
+  if (["html", "css", "js", "json", "jsx", "ts", "tsx", "md", "py", "java", "c", "cpp", "cs", "rb", "php"].includes(extension)) return "🌐";
+  if (["zip", "rar", "tar", "gz", "7z", "bz2"].includes(extension)) return "📦";
+  if (extension === "pdf") return "📕";
+  return "📄";
+}
+
 function createLessonCard(lesson) {
   const title = lesson.title || "Untitled lesson";
   const description = lesson.description || "No description available.";
@@ -57,10 +66,10 @@ function createLessonCard(lesson) {
       </div>
       <div class="lesson-card__footer">
         <a class="lesson-card__file" href="${fileUrl}" target="_blank" rel="noopener noreferrer">
-          <span class="lesson-card__icon">📄</span>
+          <span class="lesson-card__icon">${getFileIcon(fileName)}</span>
           <span class="lesson-card__filename">${fileName}</span>
         </a>
-        <a class="lesson-card__download" href="${fileUrl}" target="_blank" rel="noopener noreferrer">Download</a>
+        <a class="lesson-card__download" href="${fileUrl}" download="${fileName}">Download</a>
       </div>
     </article>
   `;
