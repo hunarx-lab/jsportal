@@ -39,7 +39,12 @@ const fallbackLessons = [
     title: "Variables and data types",
     lesson_number: 1,
     description: "An introduction to variables, strings, numbers, and booleans in JavaScript.",
-    file_url: "https://example.com/lesson-01.pdf",
+    file_url: [
+      {
+        name: "lesson-01.pdf",
+        url: "https://example.com/lesson-01.pdf"
+      }
+    ],
     created_at: "2026-07-10T08:00:00.000Z"
   }
 ];
@@ -61,17 +66,110 @@ function formatDisplayDate(value) {
   }).format(date);
 }
 
+function escapeHtml(value) {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function getFileIcon(fileName) {
+  const extension = String(fileName).split(".").pop().toLowerCase();
+  if (["html", "js", "css", "jsx", "ts", "tsx"].includes(extension)) return "🌐";
+  if (["zip", "rar", "tar", "gz", "7z"].includes(extension)) return "📦";
+  if (extension === "pdf") return "📕";
+  return "📄";
+}
+
+function normalizeLessonFiles(fileData) {
+  if (!fileData) return [];
+
+  if (Array.isArray(fileData)) {
+    return fileData
+      .filter((item) => item && (item.url || item.name))
+      .map((item) => {
+        const url = item.url || String(item.name || "").trim();
+        const name = item.name || (url ? url.split("/").pop() : "download");
+        return { url, name };
+      })
+      .filter((item) => item.url);
+  }
+
+  if (typeof fileData === "object" && fileData.url) {
+    return [{
+      url: fileData.url,
+      name: fileData.name || fileData.url.split("/").pop() || "download"
+    }];
+  }
+
+  if (typeof fileData === "string") {
+    const url = fileData.trim() || "#";
+    return [{
+      url,
+      name: url === "#" ? "File unavailable" : url.split("/").pop() || "lesson.pdf"
+    }];
+  }
+
+  return [];
+}
+
+function createFileList(lesson) {
+  const files = normalizeLessonFiles(lesson.file_url);
+
+  if (!files.length) {
+    return `
+      <div class="lesson-card__file-list">
+        <div class="lesson-card__file-item lesson-card__file-item--empty">
+          <span class="lesson-card__file-meta">
+            <span class="lesson-card__file-icon">📄</span>
+            <span class="lesson-card__file-name">No downloadable files</span>
+          </span>
+        </div>
+      </div>
+    `;
+  }
+
+  return `
+    <div class="lesson-card__file-list">
+      ${files
+        .map(
+          ({ url, name }) => {
+            const safeUrl = escapeHtml(url);
+            const safeName = escapeHtml(name);
+            return `
+              <div class="lesson-card__file-item">
+                <div class="lesson-card__file-meta">
+                  <span class="lesson-card__file-icon">${getFileIcon(name)}</span>
+                  <span class="lesson-card__file-name" title="${safeName}">${safeName}</span>
+                </div>
+                <a
+                  class="lesson-card__download-btn"
+                  href="${safeUrl}"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  download
+                >
+                  Download
+                </a>
+              </div>
+            `;
+          }
+        )
+        .join("")}
+    </div>
+  `;
+}
+
 function createLessonCard(lesson) {
   const title = lesson.title || "Untitled lesson";
   const description = lesson.description || "No description available.";
   const lessonNumber = lesson.lesson_number
     ? `Lesson ${String(lesson.lesson_number).padStart(2, "0")}`
     : "Lesson 01";
-  const fileUrl = lesson.file_url || "#";
-  const fileName = fileUrl === "#"
-    ? "File unavailable"
-    : fileUrl.split("/").pop() || "lesson.pdf";
   const createdAt = formatDisplayDate(lesson.created_at);
+  const fileListHtml = createFileList(lesson);
 
   return `
     <article class="lesson-card">
@@ -84,11 +182,7 @@ function createLessonCard(lesson) {
         <p class="lesson-card__description">${description}</p>
       </div>
       <div class="lesson-card__footer">
-        <a class="lesson-card__file" href="${fileUrl}" target="_blank" rel="noopener noreferrer">
-          <span class="lesson-card__icon">📄</span>
-          <span class="lesson-card__filename">${fileName}</span>
-        </a>
-        <a class="lesson-card__download" href="${fileUrl}" target="_blank" rel="noopener noreferrer">Download</a>
+        ${fileListHtml}
       </div>
     </article>
   `;
