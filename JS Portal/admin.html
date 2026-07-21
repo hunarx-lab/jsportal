@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Admin Panel</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="admin-shell">
+      <header class="hero hero--compact">
+        <div class="hero__content">
+          <div class="hero__top">
+            <div class="hero__brand">
+              <img class="hero__brand-logo" src="images/logo.png" alt="HunarX logo" />
+              <div>
+                <p class="hero__eyebrow">Admin Panel</p>
+                <h1>Lesson management</h1>
+              </div>
+            </div>
+            <div class="hero__actions">
+              <a class="hero__link" href="index.html">Student portal</a>
+              <button id="logoutBtn" class="hero__logout hero__logout--small" type="button">Log out</button>
+            </div>
+          </div>
+          <p class="hero__subtitle">
+            Upload lessons, manage file metadata, and keep the portal content up to date.
+          </p>
+        </div>
+      </header>
+
+      <main class="admin-panel">
+        <section id="authSection" class="auth-card">
+          <p class="auth-card__eyebrow">Admin access</p>
+          <h2>Sign in</h2>
+          <p class="auth-card__subtitle">
+            Use the same Supabase account that you want to authorize as the portal administrator.
+          </p>
+          <form id="adminAuthForm" class="auth-form">
+            <div class="auth-form__field">
+              <label for="adminEmailInput">Email</label>
+              <input id="adminEmailInput" name="email" type="email" required />
+            </div>
+            <div class="auth-form__field">
+              <label for="adminPasswordInput">Password</label>
+              <input id="adminPasswordInput" name="password" type="password" required />
+            </div>
+            <div id="adminAuthMessage" class="auth-form__message" role="alert"></div>
+            <button class="auth-form__submit" type="submit">Sign in</button>
+          </form>
+        </section>
+
+        <section id="adminContent" class="admin-panel" hidden>
+          <div class="admin-grid">
+            <div class="admin-card">
+              <h2>Upload lesson</h2>
+              <p class="admin-help">
+                Add a lesson file, choose the session number, and save the public URL for students.
+              </p>
+              <form id="uploadForm" class="admin-form">
+                <div class="admin-form__field">
+                  <label for="lessonTitleInput">Lesson title</label>
+                  <input id="lessonTitleInput" name="lessonTitle" type="text" required />
+                </div>
+                <div class="admin-form__field">
+                  <label for="sessionNumberInput">Session number</label>
+                  <input id="sessionNumberInput" name="sessionNumber" type="number" min="1" required />
+                </div>
+                <div class="admin-form__field">
+                  <label for="lessonDescriptionInput">Short description</label>
+                  <textarea id="lessonDescriptionInput" name="lessonDescription" rows="3"></textarea>
+                </div>
+                <div class="admin-form__field">
+                  <label for="lessonDateInput">Date</label>
+                  <input id="lessonDateInput" name="lessonDate" type="date" required />
+                </div>
+                <div class="admin-form__field">
+                  <label for="lessonFileInput">File</label>
+                  <input id="lessonFileInput" name="lessonFile" type="file" required />
+                </div>
+                <button class="admin-form__submit" type="submit">Upload lesson</button>
+              </form>
+            </div>
+
+            <div class="admin-card">
+              <h2>Edit lesson</h2>
+              <p class="admin-help">
+                Select a lesson from the list to change its title, description, or session number.
+              </p>
+              <form id="editForm" class="admin-form" hidden>
+                <div class="admin-form__field">
+                  <label for="editTitleInput">Lesson title</label>
+                  <input id="editTitleInput" name="editTitle" type="text" required />
+                </div>
+                <div class="admin-form__field">
+                  <label for="editSessionInput">Session number</label>
+                  <input id="editSessionInput" name="editSession" type="number" min="1" required />
+                </div>
+                <div class="admin-form__field">
+                  <label for="editDescriptionInput">Description</label>
+                  <textarea id="editDescriptionInput" name="editDescription" rows="3"></textarea>
+                </div>
+                <div class="admin-actions">
+                  <button class="admin-form__submit" type="submit">Save changes</button>
+                  <button class="admin-cancel-btn" id="cancelEditBtn" type="button">Cancel</button>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          <section class="admin-card admin-table-card">
+            <div class="admin-table-header">
+              <h2>Uploaded lessons</h2>
+              <p class="admin-table-meta">Newest lessons appear first.</p>
+            </div>
+            <div class="admin-table-wrapper">
+              <table class="admin-table">
+                <thead>
+                  <tr>
+                    <th>Title</th>
+                    <th>Session</th>
+                    <th>Date</th>
+                    <th>File</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="lessonsTableBody"></tbody>
+              </table>
+            </div>
+          </section>
+
+          <section class="admin-card">
+            <h2>Recommended Supabase RLS policies</h2>
+            <p class="admin-help">
+              Apply these policies in the Supabase Dashboard for the lessons table and the lessons storage bucket.
+            </p>
+            <div class="admin-code">
+              -- Lessons table policies
+              create policy "Admins can manage lessons"
+              on public.lessons
+              for all
+              to authenticated
+              using (
+                exists (
+                  select 1 from public.profiles p
+                  where p.id = auth.uid()
+                    and p.email = 'your_admin_email@example.com'
+                )
+              )
+              with check (
+                exists (
+                  select 1 from public.profiles p
+                  where p.id = auth.uid()
+                    and p.email = 'your_admin_email@example.com'
+                )
+              );
+
+              create policy "Authenticated users can read lessons"
+              on public.lessons
+              for select
+              to authenticated
+              using (true);
+
+              -- Storage bucket policies
+              create policy "Admins can upload lesson files"
+              on storage.objects
+              for insert
+              to authenticated
+              with check (
+                bucket_id = 'lessons'
+                and exists (
+                  select 1 from public.profiles p
+                  where p.id = auth.uid()
+                    and p.email = 'your_admin_email@example.com'
+                )
+              );
+
+              create policy "Admins can update and delete lesson files"
+              on storage.objects
+              for update, delete
+              to authenticated
+              using (
+                bucket_id = 'lessons'
+                and exists (
+                  select 1 from public.profiles p
+                  where p.id = auth.uid()
+                    and p.email = 'your_admin_email@example.com'
+                )
+              );
+
+              create policy "Authenticated users can view lesson files"
+              on storage.objects
+              for select
+              to authenticated
+              using (bucket_id = 'lessons');
+            </div>
+          </section>
+        </section>
+      </main>
+    </div>
+
+    <footer class="site-footer">
+      <span>Built by <a href="https://www.hunarx.com" target="_blank" rel="noopener noreferrer">HunarX</a></span>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="admin.js"></script>
+  </body>
+</html>

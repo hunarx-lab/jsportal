@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Student Portal</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="page-shell" hidden>
+      <header class="hero">
+        <div class="hero__content">
+          <div class="hero__top">
+            <div class="hero__brand">
+              <img class="hero__brand-logo" src="images/logo.png" alt="HunarX logo" />
+              <div>
+                <p class="hero__eyebrow">JS Student Portal</p>
+                <h1>Daily lessons</h1>
+              </div>
+            </div>
+            <div class="hero__header-actions">
+              <span id="student-name" class="student-name">...</span>
+              <button id="logoutBtn" class="hero__logout" type="button">Log out</button>
+            </div>
+          </div>
+          <p class="hero__subtitle">
+            Browse lessons by title and view the newest uploads.
+          </p>
+        </div>
+      </header>
+
+      <main class="content">
+        <section class="lessons-section">
+          <div class="lessons-toolbar">
+            <label class="lessons-search" for="lessonSearchInput">
+              <span class="lessons-search__label">Search lessons</span>
+              <input id="lessonSearchInput" type="search" placeholder="Search by lesson title" autocomplete="off" />
+            </label>
+          </div>
+          <div id="lessonsContainer" class="lessons-grid" aria-live="polite"></div>
+        </section>
+      </main>
+    </div>
+
+    <div id="authContainer" class="auth-shell">
+      <div class="auth-card">
+        <div class="auth-card__header">
+          <div class="brand-block brand-block--center">
+            <img class="brand-block__logo" src="images/logo.png" alt="HunarX logo" />
+            <div>
+              <p class="auth-card__eyebrow">JS Student Portal</p>
+              <h2 id="authTitle">Sign in</h2>
+              <p class="auth-card__subtitle">
+                Sign in to access the lesson library.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <form id="authForm" class="auth-form">
+          <div id="fullNameGroup" class="auth-form__field auth-form__field--hidden">
+            <label for="fullNameInput">Full name</label>
+            <input
+              id="fullNameInput"
+              name="fullName"
+              type="text"
+              autocomplete="name"
+              placeholder="Your full name"
+            />
+          </div>
+
+          <div class="auth-form__field">
+            <label for="emailInput">Email</label>
+            <input
+              id="emailInput"
+              name="email"
+              type="email"
+              required
+              autocomplete="email"
+              placeholder="example@email.com"
+            />
+          </div>
+
+          <div class="auth-form__field">
+            <label for="passwordInput">Password</label>
+            <input
+              id="passwordInput"
+              name="password"
+              type="password"
+              required
+              minlength="6"
+              autocomplete="current-password"
+              placeholder="At least 6 characters"
+            />
+          </div>
+
+          <div id="confirmPasswordGroup" class="auth-form__field auth-form__field--hidden">
+            <label for="confirmPasswordInput">Confirm password</label>
+            <input
+              id="confirmPasswordInput"
+              name="confirmPassword"
+              type="password"
+              autocomplete="new-password"
+              placeholder="Confirm password"
+            />
+          </div>
+
+          <div id="authMessage" class="auth-form__message" role="alert"></div>
+
+          <button id="authSubmitBtn" class="auth-form__submit" type="submit">Sign in</button>
+          <button id="authToggleLink" class="auth-form__toggle-link" type="button">
+            Need an account? Sign up
+          </button>
+        </form>
+
+        <div id="approvalState" class="auth-state" hidden>
+          <div class="auth-state__icon">✓</div>
+          <h3 id="approvalTitle">Registration received</h3>
+          <p id="approvalMessage">
+            Your account is pending teacher approval. Please wait for a confirmation email before trying again.
+          </p>
+          <button id="approvalBackBtn" class="auth-form__submit" type="button">Back to sign in</button>
+        </div>
+      </div>
+    </div>
+
+    <footer class="site-footer">
+      <span>Built by <a href="https://www.hunarx.com" target="_blank" rel="noopener noreferrer">HunarX</a></span>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="app.auth.js"></script>
+  </body>
+</html>
