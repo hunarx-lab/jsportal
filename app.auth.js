@@ -24,6 +24,12 @@ const fullNameInput = document.getElementById("fullNameInput");
 const emailInput = document.getElementById("emailInput");
 const passwordInput = document.getElementById("passwordInput");
 const confirmPasswordInput = document.getElementById("confirmPasswordInput");
+const forgotPasswordLink = document.getElementById("forgotPasswordLink");
+const forgotPasswordForm = document.getElementById("forgotPasswordForm");
+const forgotPasswordEmailInput = document.getElementById("forgotPasswordEmailInput");
+const forgotPasswordSubmitBtn = document.getElementById("forgotPasswordSubmitBtn");
+const forgotMessage = document.getElementById("forgotMessage");
+const backToLoginLink = document.getElementById("backToLoginLink");
 const logoutButton = document.getElementById("logoutBtn");
 const lessonSearchInput = document.getElementById("lessonSearchInput");
 const studentName = document.getElementById("student-name");
@@ -119,7 +125,41 @@ function clearAuthMessage() {
   if (authMessage) {
     authMessage.textContent = "";
     authMessage.className = "auth-form__message";
+    authMessage.hidden = false;
   }
+}
+
+function clearForgotMessage() {
+  if (forgotMessage) {
+    forgotMessage.textContent = "";
+    forgotMessage.className = "auth-form__message";
+    forgotMessage.hidden = false;
+  }
+}
+
+function showForgotMessage(message, isError = false) {
+  if (!forgotMessage) return;
+
+  forgotMessage.textContent = message;
+  forgotMessage.className = `auth-form__message${isError ? " auth-form__message--error" : " auth-form__message--success"}`;
+}
+
+function showLoginForm() {
+  if (authForm) authForm.hidden = false;
+  if (forgotPasswordForm) forgotPasswordForm.hidden = true;
+  if (authMessage) authMessage.hidden = false;
+  if (forgotMessage) forgotMessage.hidden = true;
+  clearAuthMessage();
+  clearForgotMessage();
+}
+
+function showForgotPasswordScreen() {
+  if (authForm) authForm.hidden = true;
+  if (forgotPasswordForm) forgotPasswordForm.hidden = false;
+  if (authMessage) authMessage.hidden = true;
+  if (approvalState) approvalState.hidden = true;
+  clearForgotMessage();
+  if (forgotPasswordForm) forgotPasswordForm.reset();
 }
 
 function toggleApprovalState(show) {
@@ -208,11 +248,22 @@ function setAuthMode(mode) {
     authToggleLink.textContent = mode === "signup"
       ? "Already have an account? Sign in"
       : "Need an account? Sign up";
+    authToggleLink.hidden = false;
+  }
+
+  if (forgotPasswordLink) {
+    forgotPasswordLink.hidden = mode !== "login";
   }
 
   clearAuthMessage();
+  clearForgotMessage();
   if (authForm) {
     authForm.reset();
+    authForm.hidden = false;
+  }
+
+  if (forgotPasswordForm) {
+    forgotPasswordForm.hidden = true;
   }
 }
 
@@ -227,6 +278,7 @@ function showAuthScreen() {
   if (logoutButton) logoutButton.hidden = true;
   lessonsContainer.innerHTML = "";
   hideApprovalState();
+  showLoginForm();
   setStudentName("...");
 }
 
@@ -316,6 +368,43 @@ async function handleSignup(event) {
   } finally {
     if (authSubmitBtn) {
       authSubmitBtn.disabled = false;
+    }
+  }
+}
+
+async function handleForgotPasswordSubmit(event) {
+  event.preventDefault();
+  clearForgotMessage();
+
+  const email = forgotPasswordEmailInput?.value.trim() || "";
+
+  if (!email) {
+    showForgotMessage("Please enter your email address.", true);
+    return;
+  }
+
+  if (!supabaseClient) {
+    showForgotMessage("The authentication service is unavailable.", true);
+    return;
+  }
+
+  if (forgotPasswordSubmitBtn) {
+    forgotPasswordSubmitBtn.disabled = true;
+  }
+
+  try {
+    const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/reset-password.html`
+    });
+
+    if (error) throw error;
+
+    showForgotMessage("If an account exists for this email, a reset link has been sent.");
+  } catch (error) {
+    showForgotMessage(getAuthErrorMessage(error), true);
+  } finally {
+    if (forgotPasswordSubmitBtn) {
+      forgotPasswordSubmitBtn.disabled = false;
     }
   }
 }
@@ -441,6 +530,21 @@ function attachEvents() {
     authToggleLink.addEventListener("click", () => {
       setAuthMode(authMode === "login" ? "signup" : "login");
     });
+  }
+
+  if (forgotPasswordLink) {
+    forgotPasswordLink.addEventListener("click", showForgotPasswordScreen);
+  }
+
+  if (backToLoginLink) {
+    backToLoginLink.addEventListener("click", () => {
+      setAuthMode("login");
+      showLoginForm();
+    });
+  }
+
+  if (forgotPasswordForm) {
+    forgotPasswordForm.addEventListener("submit", handleForgotPasswordSubmit);
   }
 
   if (logoutButton) {

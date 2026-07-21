@@ -100,6 +100,12 @@
             />
           </div>
 
+          <div class="auth-form__help">
+            <button id="forgotPasswordLink" class="auth-form__toggle-link" type="button">
+              Forgot password?
+            </button>
+          </div>
+
           <div id="confirmPasswordGroup" class="auth-form__field auth-form__field--hidden">
             <label for="confirmPasswordInput">Confirm password</label>
             <input
@@ -116,6 +122,29 @@
           <button id="authSubmitBtn" class="auth-form__submit" type="submit">Sign in</button>
           <button id="authToggleLink" class="auth-form__toggle-link" type="button">
             Need an account? Sign up
+          </button>
+        </form>
+
+        <form id="forgotPasswordForm" class="auth-form" hidden>
+          <div class="auth-form__field">
+            <label for="forgotPasswordEmailInput">Email</label>
+            <input
+              id="forgotPasswordEmailInput"
+              name="email"
+              type="email"
+              required
+              autocomplete="email"
+              placeholder="Enter your email"
+            />
+          </div>
+
+          <div id="forgotMessage" class="auth-form__message" role="alert"></div>
+
+          <button id="forgotPasswordSubmitBtn" class="auth-form__submit" type="submit">
+            Send reset link
+          </button>
+          <button id="backToLoginLink" class="auth-form__toggle-link" type="button">
+            Back to login
           </button>
         </form>
 
