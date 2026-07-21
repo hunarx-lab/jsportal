@@ -182,9 +182,10 @@ async function uploadLesson(event) {
       const contentDispositionFileName = (file.name || safeFileName).replace(/"/g, '');
 
       const { error: uploadError } = await supabaseClient.storage.from('lessons').upload(storagePath, file, {
-        cacheControl: '3600',
-        upsert: false,
-        contentDisposition: `attachment; filename="${contentDispositionFileName}"`
+        contentDisposition: `attachment; filename="${contentDispositionFileName}"; filename*=UTF-8''${encodeURIComponent(contentDispositionFileName)}`,
+        cacheControl: 'max-age=0, s-maxage=0, no-cache, no-store, must-revalidate',
+        contentType: 'application/octet-stream',
+        upsert: true
       });
       if (uploadError) throw uploadError;
 
