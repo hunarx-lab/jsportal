@@ -69,13 +69,15 @@ function renderLessons() {
     const title = lesson.title || 'Untitled lesson';
     const session = lesson.lesson_number || '-';
     const date = lesson.created_at ? new Date(lesson.created_at).toLocaleDateString('en-US') : '-';
-    const fileUrl = lesson.file_url || '#';
+    const fileList = Array.isArray(lesson.file_url) ? lesson.file_url : lesson.file_url ? [{ url: lesson.file_url }] : [];
+    const fileUrl = fileList[0]?.url || '#';
+    const fileLabel = fileList.length > 1 ? `Open ${fileList.length} files` : 'Open file';
     return `
       <tr>
         <td>${title}</td>
         <td>${session}</td>
         <td>${date}</td>
-        <td><a href="${fileUrl}" target="_blank" rel="noopener noreferrer">Open file</a></td>
+        <td><a href="${fileUrl}" target="_blank" rel="noopener noreferrer">${fileLabel}</a></td>
         <td>
           <div class="admin-actions">
             <button class="admin-action-btn" type="button" data-action="edit" data-id="${lesson.id}">Edit</button>
@@ -161,34 +163,48 @@ async function uploadLesson(event) {
   const sessionNumber = sessionNumberInput?.value;
   const description = lessonDescriptionInput?.value.trim();
   const lessonDate = lessonDateInput?.value;
-  const selectedFile = lessonFileInput?.files?.[0];
+  const selectedFiles = Array.from(lessonFileInput?.files || []);
 
-  if (!title || !sessionNumber || !lessonDate || !selectedFile) {
-    showMessage(adminAuthMessage, 'Please fill in every field and choose a file.', true);
+  if (!title || !sessionNumber || !lessonDate || selectedFiles.length === 0) {
+    showMessage(adminAuthMessage, 'Please fill in every field and choose at least one file.', true);
     return;
   }
 
+  const uploadedPaths = [];
+  const fileUrlEntries = [];
+  const storagePaths = [];
+
   try {
-    const safeFileName = (selectedFile.name || 'lesson-file').replace(/[^a-zA-Z0-9._-]/g, '_');
-    const storagePath = `lessons/${Date.now()}-${safeFileName}`;
-    const { data: uploadData, error: uploadError } = await supabaseClient.storage.from('lessons').upload(storagePath, selectedFile, {
-      cacheControl: '3600',
-      upsert: false
-    });
+    for (let index = 0; index < selectedFiles.length; index += 1) {
+      const file = selectedFiles[index];
+      const safeFileName = (file.name || 'lesson-file').replace(/[^a-zA-Z0-9._-]/g, '_');
+      const storagePath = `lessons/${Date.now()}-${index}-${safeFileName}`;
 
-    if (uploadError) throw uploadError;
+      const { error: uploadError } = await supabaseClient.storage.from('lessons').upload(storagePath, file, {
+        cacheControl: '3600',
+        upsert: false
+      });
+      if (uploadError) throw uploadError;
 
-    const { data: publicUrlData } = supabaseClient.storage.from('lessons').getPublicUrl(storagePath);
-    const publicUrl = publicUrlData?.publicUrl;
+      const { data: publicUrlData, error: publicUrlError } = supabaseClient.storage.from('lessons').getPublicUrl(storagePath);
+      if (publicUrlError) throw publicUrlError;
 
-    const { error: lessonsError } = await supabaseClient.from('lessons').insert([{ 
+      const publicUrl = publicUrlData?.publicUrl;
+      if (!publicUrl) throw new Error(`Unable to generate public URL for ${file.name}`);
+
+      uploadedPaths.push(storagePath);
+      fileUrlEntries.push({ name: file.name, url: publicUrl });
+      storagePaths.push(storagePath);
+    }
+
+    const { error: lessonsError } = await supabaseClient.from('lessons').insert([{
       title,
       lesson_number: Number(sessionNumber),
       description,
-      file_url: publicUrl,
-      storage_path: storagePath,
+      file_url: fileUrlEntries,
+      storage_path: storagePaths,
       created_at: lessonDate
-    }]);
+    }] );
 
     if (lessonsError) throw lessonsError;
 
@@ -196,6 +212,13 @@ async function uploadLesson(event) {
     showMessage(adminAuthMessage, 'Lesson uploaded successfully.', false);
     await loadLessons();
   } catch (error) {
+    if (uploadedPaths.length) {
+      try {
+        await supabaseClient.storage.from('lessons').remove(uploadedPaths);
+      } catch (cleanupError) {
+        console.warn('Cleanup after failed upload failed:', cleanupError);
+      }
+    }
     showMessage(adminAuthMessage, error.message || 'Upload failed.', true);
   }
 }
@@ -249,7 +272,8 @@ async function deleteLesson(id) {
 
   try {
     if (lesson.storage_path) {
-      await supabaseClient.storage.from('lessons').remove([lesson.storage_path]);
+      const storagePaths = Array.isArray(lesson.storage_path) ? lesson.storage_path : [lesson.storage_path];
+      await supabaseClient.storage.from('lessons').remove(storagePaths);
     }
     const { error } = await supabaseClient.from('lessons').delete().eq('id', id);
     if (error) throw error;
