@@ -33,6 +33,26 @@ const backToLoginLink = document.getElementById("backToLoginLink");
 const logoutButton = document.getElementById("logoutBtn");
 const lessonSearchInput = document.getElementById("lessonSearchInput");
 const studentName = document.getElementById("student-name");
+const themeToggleBtn = document.getElementById("themeToggleBtn");
+const lessonFilters = document.getElementById("lessonFilters");
+const placeholderContent = document.getElementById("placeholderContent");
+const lessonsSection = document.getElementById("lessonsSection");
+const previewModal = document.getElementById("previewModal");
+const previewModalTitle = document.getElementById("previewModalTitle");
+const previewModalBody = document.getElementById("previewModalBody");
+const previewDownloadButton = document.getElementById("previewDownloadButton");
+const closePreviewModal = document.getElementById("closePreviewModal");
+const closePreviewButton = document.getElementById("closePreviewButton");
+const portalTabs = Array.from(document.querySelectorAll(".portal-tab"));
+
+const STORAGE_THEME_KEY = "jsPortalTheme";
+const STORAGE_DOWNLOADED_KEY = "jsPortalDownloadedFiles";
+let authMode = "login";
+let allLessons = [];
+let activeCategory = "All";
+let activeTab = "lessons";
+let downloadedFiles = new Set(JSON.parse(localStorage.getItem(STORAGE_DOWNLOADED_KEY) || "[]"));
+let pendingApprovalMessage = "";
 
 const fallbackLessons = [
   {
@@ -48,10 +68,6 @@ const fallbackLessons = [
     created_at: "2026-07-10T08:00:00.000Z"
   }
 ];
-
-let authMode = "login";
-let allLessons = [];
-let pendingApprovalMessage = "";
 
 function formatDisplayDate(value) {
   if (!value) return "Date unavailable";
@@ -140,6 +156,7 @@ async function downloadLesson(fileUrl, fileName) {
 
 function createFileList(lesson) {
   const files = normalizeLessonFiles(lesson.file_url);
+  const isDownloaded = (fileName) => downloadedFiles.has(fileName);
 
   if (!files.length) {
     return `
@@ -161,20 +178,34 @@ function createFileList(lesson) {
           ({ url, name }) => {
             const safeUrl = escapeHtml(url);
             const safeName = escapeHtml(name);
+            const downloadedBadge = isDownloaded(safeName)
+              ? '<span class="lesson-card__downloaded-badge">Downloaded</span>'
+              : '';
             return `
               <div class="lesson-card__file-item">
                 <div class="lesson-card__file-meta">
                   <span class="lesson-card__file-icon">${getFileIcon(name)}</span>
                   <span class="lesson-card__file-name" title="${safeName}">${safeName}</span>
                 </div>
-                <a
-                  class="lesson-card__download-btn"
-                  href="${safeUrl}"
-                  data-download-url="${safeUrl}"
-                  data-download-name="${safeName}"
-                >
-                  Download
-                </a>
+                <div class="lesson-card__file-actions">
+                  <button
+                    class="lesson-card__preview-btn"
+                    type="button"
+                    data-preview-url="${safeUrl}"
+                    data-preview-name="${safeName}"
+                  >
+                    Preview
+                  </button>
+                  <a
+                    class="lesson-card__download-btn"
+                    href="${safeUrl}"
+                    data-download-url="${safeUrl}"
+                    data-download-name="${safeName}"
+                  >
+                    Download
+                  </a>
+                </div>
+                ${downloadedBadge}
               </div>
             `;
           }
@@ -190,6 +221,7 @@ function createLessonCard(lesson) {
   const lessonNumber = lesson.lesson_number
     ? `Lesson ${String(lesson.lesson_number).padStart(2, "0")}`
     : "Lesson 01";
+  const category = lesson.category || "General";
   const createdAt = formatDisplayDate(lesson.created_at);
   const dateHtml = `<div class="lesson-card__date">Uploaded: ${createdAt}</div>`;
   const fileListHtml = createFileList(lesson);
@@ -202,6 +234,7 @@ function createLessonCard(lesson) {
       </div>
       <div class="lesson-card__meta">
         ${dateHtml}
+        <span class="lesson-card__category">${category}</span>
         <p class="lesson-card__description">${description}</p>
       </div>
       <div class="lesson-card__footer">
@@ -410,24 +443,65 @@ function showPortalScreen() {
 async function fetchLessons() {
   if (!supabaseClient) {
     allLessons = fallbackLessons;
-    renderLessons(allLessons);
+    updateFiltersAndRender();
     return;
   }
 
   try {
     const { data, error } = await supabaseClient
       .from("lessons")
-      .select("title, lesson_number, description, file_url, created_at")
+      .select("title, lesson_number, description, file_url, created_at, category")
       .order("created_at", { ascending: false });
 
     if (error) throw error;
     allLessons = data || [];
-    renderLessons(allLessons);
+    updateFiltersAndRender();
   } catch (error) {
     console.error("Failed to fetch lessons:", error);
     allLessons = fallbackLessons;
-    renderLessons(allLessons);
+    updateFiltersAndRender();
   }
+}
+
+function getCategories(lessons) {
+  const values = new Set(["All"]);
+  (lessons || []).forEach((lesson) => {
+    if (lesson.category) {
+      values.add(lesson.category);
+    }
+  });
+  return Array.from(values);
+}
+
+function setActiveCategory(category) {
+  activeCategory = category;
+  document.querySelectorAll(".lesson-filter").forEach((button) => {
+    button.classList.toggle("lesson-filter--active", button.dataset.category === category);
+  });
+  updateFiltersAndRender();
+}
+
+function updateFiltersAndRender() {
+  const filteredLessons = allLessons.filter((lesson) => {
+    const matchesCategory = activeCategory === "All" || lesson.category === activeCategory;
+    const searchTerm = lessonSearchInput?.value.trim().toLowerCase() || "";
+    const matchesSearch = !searchTerm || (lesson.title || "").toLowerCase().includes(searchTerm);
+    return matchesCategory && matchesSearch;
+  });
+
+  renderLessons(filteredLessons);
+  renderCategoryFilters(getCategories(allLessons));
+}
+
+function renderCategoryFilters(categories) {
+  if (!lessonFilters) return;
+  lessonFilters.innerHTML = categories
+    .map((category) => `
+      <button class="lesson-filter${category === activeCategory ? ' lesson-filter--active' : ''}" type="button" data-category="${category}">
+        ${category}
+      </button>
+    `)
+    .join("");
 }
 
 async function handleSignup(event) {
@@ -651,7 +725,99 @@ function handleLessonDownloadClick(event) {
     return;
   }
 
+  downloadedFiles.add(fileName);
+  localStorage.setItem(STORAGE_DOWNLOADED_KEY, JSON.stringify(Array.from(downloadedFiles)));
+  updateFiltersAndRender();
   downloadLesson(fileUrl, fileName);
+}
+
+function openPreviewModal(fileUrl, fileName) {
+  if (!previewModal || !previewModalTitle || !previewModalBody || !previewDownloadButton) return;
+
+  previewModalTitle.textContent = `Preview: ${fileName}`;
+  previewDownloadButton.href = fileUrl;
+  previewDownloadButton.download = fileName;
+  previewModalBody.innerHTML = `<div class="preview-panel">Loading preview...</div>`;
+  previewModal.hidden = false;
+  document.body.classList.add("modal-open");
+
+  if (fileUrl.toLowerCase().endsWith(".pdf")) {
+    previewModalBody.innerHTML = `<iframe class="preview-frame" src="${fileUrl}" title="PDF preview"></iframe>`;
+    return;
+  }
+
+  try {
+    fetch(fileUrl)
+      .then((response) => {
+        if (!response.ok) throw new Error("Preview could not be loaded.");
+        const extension = fileName.split('.').pop().toLowerCase();
+        if (["html", "css", "js", "json", "md", "txt"].includes(extension)) {
+          return response.text();
+        }
+        return response.blob();
+      })
+      .then((data) => {
+        if (typeof data === "string") {
+          const safeContent = escapeHtml(data);
+          previewModalBody.innerHTML = `<pre class="preview-text">${safeContent}</pre>`;
+        } else {
+          previewModalBody.innerHTML = `<div class="preview-panel">Preview not available for this file type. Use download instead.</div>`;
+        }
+      })
+      .catch(() => {
+        previewModalBody.innerHTML = `<div class="preview-panel">Preview not available. Use download instead.</div>`;
+      });
+  } catch {
+    previewModalBody.innerHTML = `<div class="preview-panel">Preview not available. Use download instead.</div>`;
+  }
+}
+
+function closeModal() {
+  if (!previewModal) return;
+  previewModal.hidden = true;
+  document.body.classList.remove("modal-open");
+}
+
+function handleLessonCardAction(event) {
+  const previewButton = event.target.closest(".lesson-card__preview-btn");
+  if (previewButton) {
+    const previewUrl = previewButton.dataset.previewUrl;
+    const previewName = previewButton.dataset.previewName;
+    if (previewUrl && previewName) {
+      openPreviewModal(previewUrl, previewName);
+    }
+    return;
+  }
+
+  handleLessonDownloadClick(event);
+}
+
+function setTheme(theme) {
+  if (theme === "light") {
+    document.documentElement.classList.add("theme-light");
+    document.documentElement.classList.remove("theme-dark");
+    themeToggleBtn.textContent = "🌙";
+  } else {
+    document.documentElement.classList.add("theme-dark");
+    document.documentElement.classList.remove("theme-light");
+    themeToggleBtn.textContent = "☀️";
+  }
+  localStorage.setItem(STORAGE_THEME_KEY, theme);
+}
+
+function toggleTheme() {
+  const currentTheme = document.documentElement.classList.contains("theme-light") ? "light" : "dark";
+  setTheme(currentTheme === "light" ? "dark" : "light");
+}
+
+function handleTabClick(event) {
+  const button = event.target.closest(".portal-tab");
+  if (!button) return;
+  activeTab = button.dataset.tab || "lessons";
+  portalTabs.forEach((tab) => tab.classList.toggle("portal-tab--active", tab === button));
+  const isLessonsTab = activeTab === "lessons";
+  if (lessonsSection) lessonsSection.hidden = !isLessonsTab;
+  if (placeholderContent) placeholderContent.hidden = isLessonsTab;
 }
 
 function attachEvents() {
@@ -692,13 +858,33 @@ function attachEvents() {
   }
 
   if (lessonSearchInput) {
-    lessonSearchInput.addEventListener("input", (event) => {
-      filterLessons(event.target.value);
-    });
+    lessonSearchInput.addEventListener("input", () => updateFiltersAndRender());
   }
 
   if (lessonsContainer) {
-    lessonsContainer.addEventListener("click", handleLessonDownloadClick);
+    lessonsContainer.addEventListener("click", handleLessonCardAction);
+  }
+
+  if (themeToggleBtn) {
+    themeToggleBtn.addEventListener("click", toggleTheme);
+  }
+
+  portalTabs.forEach((tab) => {
+    tab.addEventListener("click", handleTabClick);
+  });
+
+  if (closePreviewModal) {
+    closePreviewModal.addEventListener("click", closeModal);
+  }
+
+  if (closePreviewButton) {
+    closePreviewButton.addEventListener("click", closeModal);
+  }
+
+  if (previewModal) {
+    previewModal.addEventListener("click", (event) => {
+      if (event.target === previewModal) closeModal();
+    });
   }
 }
 
@@ -711,6 +897,13 @@ document.addEventListener("DOMContentLoaded", () => {
   if (!supabaseClient) {
     showAuthMessage("The authentication service is unavailable.", true);
     return;
+  }
+
+  const savedTheme = localStorage.getItem(STORAGE_THEME_KEY) || "dark";
+  setTheme(savedTheme);
+
+  if (themeToggleBtn) {
+    themeToggleBtn.addEventListener("click", toggleTheme);
   }
 
   supabaseClient.auth.onAuthStateChange((_event, session) => {

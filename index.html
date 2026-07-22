@@ -25,8 +25,13 @@
               </div>
             </div>
             <div class="hero__header-actions">
-              <span id="student-name" class="student-name">...</span>
-              <button id="logoutBtn" class="hero__logout" type="button">Log out</button>
+              <div class="hero__header-meta">
+                <span id="student-name" class="student-name">...</span>
+              </div>
+              <div class="hero__header-controls">
+                <button id="themeToggleBtn" class="theme-toggle" type="button" aria-label="Toggle theme">🌙</button>
+                <button id="logoutBtn" class="hero__logout" type="button">Log out</button>
+              </div>
             </div>
           </div>
           <p class="hero__subtitle">
@@ -36,12 +41,27 @@
       </header>
 
       <main class="content">
-        <section class="lessons-section">
+        <section class="portal-tabs" role="tablist" aria-label="Dashboard tabs">
+          <button class="portal-tab portal-tab--active" data-tab="lessons" type="button">Daily Lessons</button>
+          <button class="portal-tab" data-tab="assignments" type="button">Assignments</button>
+          <button class="portal-tab" data-tab="quizzes" type="button">Quizzes</button>
+          <button class="portal-tab" data-tab="announcements" type="button">Announcements</button>
+        </section>
+
+        <section id="placeholderContent" class="placeholder-panel" hidden>
+          <div class="placeholder-panel__content">
+            <h2>Coming soon</h2>
+            <p>We are building this section for future student assignments, quizzes, and announcements.</p>
+          </div>
+        </section>
+
+        <section id="lessonsSection" class="lessons-section">
           <div class="lessons-toolbar">
             <label class="lessons-search" for="lessonSearchInput">
               <span class="lessons-search__label">Search lessons</span>
               <input id="lessonSearchInput" type="search" placeholder="Search by lesson title" autocomplete="off" />
             </label>
+            <div id="lessonFilters" class="lesson-filters" aria-label="Lesson categories"></div>
           </div>
           <div id="lessonsContainer" class="lessons-grid" aria-live="polite"></div>
         </section>
@@ -154,6 +174,23 @@
             Your account is pending teacher approval. Please wait for a confirmation email before trying again.
           </p>
           <button id="approvalBackBtn" class="auth-form__submit" type="button">Back to sign in</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="previewModal" class="modal-overlay" hidden>
+      <div class="modal">
+        <div class="modal__header">
+          <div>
+            <p class="modal__eyebrow">File preview</p>
+            <h3 id="previewModalTitle">Preview</h3>
+          </div>
+          <button id="closePreviewModal" class="modal__close" type="button" aria-label="Close preview">✕</button>
+        </div>
+        <div id="previewModalBody" class="modal__body"></div>
+        <div class="modal__actions">
+          <a id="previewDownloadButton" class="admin-form__submit" href="#" target="_blank" rel="noreferrer noopener">Download</a>
+          <button id="closePreviewButton" class="admin-form__submit" type="button">Close</button>
         </div>
       </div>
     </div>

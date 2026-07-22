@@ -18,12 +18,16 @@ const lessonsTableBody = document.getElementById('lessonsTableBody');
 const lessonTitleInput = document.getElementById('lessonTitleInput');
 const sessionNumberInput = document.getElementById('sessionNumberInput');
 const lessonDescriptionInput = document.getElementById('lessonDescriptionInput');
+const lessonCategoryInput = document.getElementById('lessonCategoryInput');
 const lessonDateInput = document.getElementById('lessonDateInput');
 const lessonFileInput = document.getElementById('lessonFileInput');
 const editTitleInput = document.getElementById('editTitleInput');
 const editSessionInput = document.getElementById('editSessionInput');
 const editDescriptionInput = document.getElementById('editDescriptionInput');
+const editCategoryInput = document.getElementById('editCategoryInput');
 const editLessonFileInput = document.getElementById('editLessonFileInput');
+const uploadMessage = document.getElementById('uploadMessage');
+const editMessage = document.getElementById('editMessage');
 const cancelEditBtn = document.getElementById('cancelEditBtn');
 const logoutButton = document.getElementById('logoutBtn');
 
@@ -95,13 +99,14 @@ function showLoginScreen() {
 function renderLessons() {
   if (!lessonsTableBody) return;
   if (!lessons.length) {
-    lessonsTableBody.innerHTML = '<tr><td colspan="5" class="empty-state">No lessons yet.</td></tr>';
+    lessonsTableBody.innerHTML = '<tr><td colspan="6" class="empty-state">No lessons yet.</td></tr>';
     return;
   }
 
   lessonsTableBody.innerHTML = lessons.map((lesson) => {
     const title = lesson.title || 'Untitled lesson';
     const session = lesson.lesson_number || '-';
+    const category = lesson.category || 'General';
     const date = lesson.created_at ? new Date(lesson.created_at).toLocaleDateString('en-US') : '-';
     const fileList = Array.isArray(lesson.file_url) ? lesson.file_url : lesson.file_url ? [{ url: lesson.file_url }] : [];
     const fileUrl = fileList[0]?.url || '#';
@@ -110,6 +115,7 @@ function renderLessons() {
       <tr>
         <td>${title}</td>
         <td>${session}</td>
+        <td>${category}</td>
         <td>${date}</td>
         <td><a href="${fileUrl}" target="_blank" rel="noopener noreferrer">${fileLabel}</a></td>
         <td>
@@ -197,11 +203,12 @@ async function uploadLesson(event) {
   const title = lessonTitleInput?.value.trim();
   const sessionNumber = sessionNumberInput?.value;
   const description = lessonDescriptionInput?.value.trim();
+  const category = lessonCategoryInput?.value;
   const lessonDate = lessonDateInput?.value;
   const selectedFiles = Array.from(lessonFileInput?.files || []);
 
-  if (!title || !sessionNumber || !lessonDate || selectedFiles.length === 0) {
-    showMessage(adminAuthMessage, 'Please fill in every field and choose at least one file.', true);
+  if (!title || !sessionNumber || !category || !lessonDate || selectedFiles.length === 0) {
+    showMessage(uploadMessage, 'Please fill in every field and choose at least one file.', true);
     return;
   }
 
@@ -239,6 +246,7 @@ async function uploadLesson(event) {
       title,
       lesson_number: Number(sessionNumber),
       description,
+      category,
       file_url: fileUrlEntries,
       storage_path: storagePaths,
       created_at: lessonDate
@@ -247,7 +255,7 @@ async function uploadLesson(event) {
     if (lessonsError) throw lessonsError;
 
     uploadForm.reset();
-    showMessage(adminAuthMessage, 'Lesson uploaded successfully.', false);
+    showMessage(uploadMessage, 'Lesson uploaded successfully.', false);
     await loadLessons();
   } catch (error) {
     if (uploadedPaths.length) {
@@ -268,6 +276,7 @@ function startEditLesson(id) {
   editTitleInput.value = lesson.title || '';
   editSessionInput.value = lesson.lesson_number || '';
   editDescriptionInput.value = lesson.description || '';
+  editCategoryInput.value = lesson.category || 'General';
   editForm.hidden = false;
 }
 
@@ -319,7 +328,8 @@ async function saveEditLesson(event) {
   const updateData = {
     title: editTitleInput.value.trim(),
     lesson_number: Number(editSessionInput.value),
-    description: editDescriptionInput.value.trim()
+    description: editDescriptionInput.value.trim(),
+    category: editCategoryInput.value || 'General'
   };
 
   let uploadedPaths = [];
@@ -352,7 +362,7 @@ async function saveEditLesson(event) {
       await supabaseClient.storage.from('lessons').remove(oldStoragePaths);
     }
 
-    showMessage(adminAuthMessage, 'Lesson updated successfully.', false);
+    showMessage(editMessage, 'Lesson updated successfully.', false);
     cancelEdit();
     await loadLessons();
   } catch (error) {

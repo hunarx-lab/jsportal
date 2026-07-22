@@ -77,6 +77,17 @@
                   <textarea id="lessonDescriptionInput" name="lessonDescription" rows="3"></textarea>
                 </div>
                 <div class="admin-form__field">
+                  <label for="lessonCategoryInput">Category / Tag</label>
+                  <select id="lessonCategoryInput" name="lessonCategory" required>
+                    <option value="">Select category</option>
+                    <option value="Chapter 1">Chapter 1</option>
+                    <option value="Homework">Homework</option>
+                    <option value="Handouts">Handouts</option>
+                    <option value="General">General</option>
+                  </select>
+                </div>
+                <div id="uploadMessage" class="auth-form__message" role="status"></div>
+                <div class="admin-form__field">
                   <label for="lessonDateInput">Date</label>
                   <input id="lessonDateInput" name="lessonDate" type="date" required />
                 </div>
@@ -107,6 +118,17 @@
                   <textarea id="editDescriptionInput" name="editDescription" rows="3"></textarea>
                 </div>
                 <div class="admin-form__field">
+                  <label for="editCategoryInput">Category / Tag</label>
+                  <select id="editCategoryInput" name="editCategory" required>
+                    <option value="">Select category</option>
+                    <option value="Chapter 1">Chapter 1</option>
+                    <option value="Homework">Homework</option>
+                    <option value="Handouts">Handouts</option>
+                    <option value="General">General</option>
+                  </select>
+                </div>
+                <div id="editMessage" class="auth-form__message" role="status"></div>
+                <div class="admin-form__field">
                   <label for="editLessonFileInput">Replace file</label>
                   <input id="editLessonFileInput" name="editLessonFile" type="file" multiple />
                 </div>
@@ -129,6 +151,7 @@
                   <tr>
                     <th>Title</th>
                     <th>Session</th>
+                    <th>Category</th>
                     <th>Date</th>
                     <th>File</th>
                     <th>Actions</th>
