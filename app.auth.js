@@ -41,6 +41,7 @@ const previewModal = document.getElementById("previewModal");
 const previewModalTitle = document.getElementById("previewModalTitle");
 const previewModalBody = document.getElementById("previewModalBody");
 const previewDownloadButton = document.getElementById("previewDownloadButton");
+const portalToast = document.getElementById("portalToast");
 const closePreviewModal = document.getElementById("closePreviewModal");
 const closePreviewButton = document.getElementById("closePreviewButton");
 const portalTabs = Array.from(document.querySelectorAll(".portal-tab"));
@@ -53,6 +54,7 @@ let activeCategory = "All";
 let activeTab = "lessons";
 let downloadedFiles = new Set(JSON.parse(localStorage.getItem(STORAGE_DOWNLOADED_KEY) || "[]"));
 let pendingApprovalMessage = "";
+let portalToastTimeout = null;
 
 const fallbackLessons = [
   {
@@ -156,7 +158,6 @@ async function downloadLesson(fileUrl, fileName) {
 
 function createFileList(lesson) {
   const files = normalizeLessonFiles(lesson.file_url);
-  const isDownloaded = (fileName) => downloadedFiles.has(fileName);
 
   if (!files.length) {
     return `
@@ -178,9 +179,6 @@ function createFileList(lesson) {
           ({ url, name }) => {
             const safeUrl = escapeHtml(url);
             const safeName = escapeHtml(name);
-            const downloadedBadge = isDownloaded(safeName)
-              ? '<span class="lesson-card__downloaded-badge">Downloaded</span>'
-              : '';
             return `
               <div class="lesson-card__file-item">
                 <div class="lesson-card__file-meta">
@@ -205,7 +203,6 @@ function createFileList(lesson) {
                     Download
                   </a>
                 </div>
-                ${downloadedBadge}
               </div>
             `;
           }
@@ -348,6 +345,28 @@ function showAuthMessage(message, isError = false) {
 
   authMessage.textContent = message;
   authMessage.className = `auth-form__message${isError ? " auth-form__message--error" : " auth-form__message--success"}`;
+}
+
+function showPortalToast(message) {
+  if (!portalToast) return;
+
+  portalToast.textContent = message;
+  portalToast.hidden = false;
+  portalToast.classList.add("toast-visible");
+  portalToast.classList.remove("toast-hidden");
+
+  if (portalToastTimeout) {
+    window.clearTimeout(portalToastTimeout);
+  }
+
+  portalToastTimeout = window.setTimeout(() => {
+    if (!portalToast) return;
+    portalToast.classList.remove("toast-visible");
+    portalToast.classList.add("toast-hidden");
+    window.setTimeout(() => {
+      if (portalToast) portalToast.hidden = true;
+    }, 250);
+  }, 3000);
 }
 
 function getAuthErrorMessage(error) {
@@ -737,7 +756,7 @@ function handleLessonDownloadClick(event) {
 
   downloadedFiles.add(fileName);
   localStorage.setItem(STORAGE_DOWNLOADED_KEY, JSON.stringify(Array.from(downloadedFiles)));
-  updateFiltersAndRender();
+  showPortalToast("Downloaded");
   downloadLesson(fileUrl, fileName);
 }
 

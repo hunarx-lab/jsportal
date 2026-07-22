@@ -43,6 +43,7 @@ select {
   padding: 32px 20px 48px;
   width: 100%;
   max-width: 100%;
+  overflow-x: hidden;
 }
 
 .auth-shell {
@@ -221,6 +222,7 @@ select {
 }
 
 .hero {
+  width: min(100%, 1160px);
   max-width: 1160px;
   margin: 0 auto 24px;
   padding: 28px 30px;
@@ -259,6 +261,8 @@ select {
   gap: 12px;
   margin-bottom: 8px;
   width: 100%;
+  flex-wrap: wrap;
+  align-items: flex-start;
 }
 
 .hero__header-actions {
@@ -266,6 +270,7 @@ select {
   align-items: center;
   gap: 12px;
   flex-wrap: wrap;
+  min-width: 0;
 }
 
 .student-name {
@@ -288,6 +293,7 @@ select {
 }
 
 .content {
+  width: min(100%, 1160px);
   max-width: 1160px;
   margin: 0 auto;
   flex: 1;
@@ -295,6 +301,9 @@ select {
 
 .lessons-toolbar {
   margin-bottom: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .lessons-search {
@@ -329,6 +338,8 @@ select {
   flex-wrap: wrap;
   gap: 10px;
   margin-bottom: 20px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .portal-tab {
@@ -339,6 +350,7 @@ select {
   padding: 10px 18px;
   cursor: pointer;
   font-weight: 700;
+  flex-shrink: 0;
 }
 
 .portal-tab--active {
@@ -358,6 +370,8 @@ select {
   flex-wrap: wrap;
   gap: 10px;
   margin-top: 12px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .lesson-filter {
@@ -368,6 +382,7 @@ select {
   padding: 10px 16px;
   cursor: pointer;
   font-size: 0.95rem;
+  flex-shrink: 0;
 }
 
 .lesson-filter--active {
@@ -393,6 +408,7 @@ select {
   display: flex;
   align-items: center;
   gap: 10px;
+  min-width: 0;
 }
 
 .lesson-card__meta {
@@ -533,6 +549,37 @@ select {
   border-radius: 18px;
   background: rgba(148, 163, 184, 0.1);
   color: var(--text-secondary);
+}
+
+.portal-toast {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%) translateY(-8px);
+  z-index: 2000;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.9rem 1.2rem;
+  background: rgba(74, 222, 128, 0.95);
+  color: #0f172a;
+  border-radius: 999px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.18);
+  font-weight: 700;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.portal-toast.toast-visible {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+.portal-toast.toast-hidden {
+  opacity: 0;
+  transform: translateX(-50%) translateY(-8px);
 }
 
 body.modal-open {

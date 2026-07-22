@@ -195,6 +195,20 @@ async function handleLogout() {
   showLoginScreen();
 }
 
+function getTodayDateValue() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function setDefaultLessonDate() {
+  if (lessonDateInput) {
+    lessonDateInput.value = getTodayDateValue();
+  }
+}
+
 async function uploadLesson(event) {
   event.preventDefault();
   if (!supabaseClient || !currentUser) return;
@@ -255,6 +269,7 @@ async function uploadLesson(event) {
     if (lessonsError) throw lessonsError;
 
     uploadForm.reset();
+    setDefaultLessonDate();
     showMessage(uploadMessage, 'Lesson uploaded successfully.', false);
     await loadLessons();
   } catch (error) {
@@ -276,7 +291,7 @@ function startEditLesson(id) {
   editTitleInput.value = lesson.title || '';
   editSessionInput.value = lesson.lesson_number || '';
   editDescriptionInput.value = lesson.description || '';
-  editCategoryInput.value = lesson.category || 'General';
+  editCategoryInput.value = lesson.category || 'Lesson Materials';
   editForm.hidden = false;
 }
 
@@ -329,7 +344,7 @@ async function saveEditLesson(event) {
     title: editTitleInput.value.trim(),
     lesson_number: Number(editSessionInput.value),
     description: editDescriptionInput.value.trim(),
-    category: editCategoryInput.value || 'General'
+    category: editCategoryInput.value || 'Lesson Materials'
   };
 
   let uploadedPaths = [];
@@ -420,6 +435,7 @@ async function initializeAdmin() {
   cancelEditBtn?.addEventListener('click', cancelEdit);
   lessonsTableBody?.addEventListener('click', handleTableClick);
   logoutButton?.addEventListener('click', handleLogout);
+  setDefaultLessonDate();
 
   supabaseClient.auth.onAuthStateChange((event, session) => {
     handleAuthStateChange(event, session).catch((error) => console.error('Auth state listener failed:', error));
