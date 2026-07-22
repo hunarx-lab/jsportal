@@ -46,6 +46,39 @@ function isAdminUser(user) {
   return Boolean(user?.email && user.email.toLowerCase() === ADMIN_EMAIL.toLowerCase());
 }
 
+async function handleAuthStateChange(event, session) {
+  if (event === 'SIGNED_OUT' || !session?.user) {
+    currentUser = null;
+    showLoginScreen();
+    return;
+  }
+
+  if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && isAdminUser(session.user)) {
+    currentUser = session.user;
+    showAdminScreen();
+    return;
+  }
+
+  if (session?.user && !isAdminUser(session.user)) {
+    await supabaseClient.auth.signOut();
+    currentUser = null;
+    showLoginScreen();
+  }
+}
+
+async function ensureAdminSessionValid() {
+  if (!supabaseClient) return false;
+  const { data: { session } } = await supabaseClient.auth.getSession();
+  if (!session?.user || !isAdminUser(session.user)) {
+    currentUser = null;
+    showMessage(adminAuthMessage, 'Your session has expired, please log in again', true);
+    await handleLogout();
+    return false;
+  }
+  currentUser = session.user;
+  return true;
+}
+
 function showAdminScreen() {
   if (authSection) authSection.hidden = true;
   if (adminContent) adminContent.hidden = false;
@@ -158,6 +191,7 @@ async function handleLogout() {
 async function uploadLesson(event) {
   event.preventDefault();
   if (!supabaseClient || !currentUser) return;
+  if (!(await ensureAdminSessionValid())) return;
 
   const title = lessonTitleInput?.value.trim();
   const sessionNumber = sessionNumberInput?.value;
@@ -245,6 +279,7 @@ function cancelEdit() {
 async function saveEditLesson(event) {
   event.preventDefault();
   if (!supabaseClient || !editingLessonId) return;
+  if (!(await ensureAdminSessionValid())) return;
 
   try {
     const { error } = await supabaseClient
@@ -267,6 +302,7 @@ async function saveEditLesson(event) {
 
 async function deleteLesson(id) {
   if (!supabaseClient) return;
+  if (!(await ensureAdminSessionValid())) return;
   const lesson = lessons.find((item) => item.id === id);
   if (!lesson) return;
 
@@ -307,6 +343,10 @@ async function initializeAdmin() {
   cancelEditBtn?.addEventListener('click', cancelEdit);
   lessonsTableBody?.addEventListener('click', handleTableClick);
   logoutButton?.addEventListener('click', handleLogout);
+
+  supabaseClient.auth.onAuthStateChange((event, session) => {
+    handleAuthStateChange(event, session).catch((error) => console.error('Auth state listener failed:', error));
+  });
 
   const { data: { session } } = await supabaseClient.auth.getSession();
   if (session?.user) {
