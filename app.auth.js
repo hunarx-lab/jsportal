@@ -191,10 +191,7 @@ function createLessonCard(lesson) {
     ? `Lesson ${String(lesson.lesson_number).padStart(2, "0")}`
     : "Lesson 01";
   const createdAt = formatDisplayDate(lesson.created_at);
-  const updatedAt = lesson.updated_at ? formatDisplayDate(lesson.updated_at) : null;
-  const dateHtml = updatedAt && lesson.updated_at !== lesson.created_at
-    ? `<div class="lesson-card__date">Uploaded: ${createdAt}</div><div class="lesson-card__date">Updated: ${updatedAt}</div>`
-    : `<div class="lesson-card__date">Uploaded: ${createdAt}</div>`;
+  const dateHtml = `<div class="lesson-card__date">Uploaded: ${createdAt}</div>`;
   const fileListHtml = createFileList(lesson);
 
   return `
@@ -420,7 +417,7 @@ async function fetchLessons() {
   try {
     const { data, error } = await supabaseClient
       .from("lessons")
-      .select("title, lesson_number, description, file_url, created_at, updated_at")
+      .select("title, lesson_number, description, file_url, created_at")
       .order("created_at", { ascending: false });
 
     if (error) throw error;

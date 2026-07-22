@@ -129,7 +129,7 @@ async function loadLessons() {
   try {
     const { data, error } = await supabaseClient
       .from('lessons')
-      .select('id, title, lesson_number, description, file_url, created_at, updated_at, storage_path')
+      .select('id, title, lesson_number, description, file_url, created_at, storage_path')
       .order('created_at', { ascending: false });
 
     if (error) throw error;
@@ -241,9 +241,8 @@ async function uploadLesson(event) {
       description,
       file_url: fileUrlEntries,
       storage_path: storagePaths,
-      created_at: lessonDate,
-      updated_at: lessonDate
-    }] );
+      created_at: lessonDate
+    }]);
 
     if (lessonsError) throw lessonsError;
 
@@ -320,8 +319,7 @@ async function saveEditLesson(event) {
   const updateData = {
     title: editTitleInput.value.trim(),
     lesson_number: Number(editSessionInput.value),
-    description: editDescriptionInput.value.trim(),
-    updated_at: new Date().toISOString()
+    description: editDescriptionInput.value.trim()
   };
 
   let uploadedPaths = [];
