@@ -2,7 +2,7 @@ const SUPABASE_URL = "https://pxdhqwiztigwqzrzummo.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_pVDRTFYOulR0QuQ1lcl9MA_vEYBr00-";
 
 const lessonsContainer = document.getElementById("lessonsContainer");
-const authModal = document.getElementById("authModal");
+const authModal = document.getElementById("authContainer");
 const authForm = document.getElementById("authForm");
 const authTitle = document.getElementById("authTitle");
 const authSubmitBtn = document.getElementById("authSubmitBtn");
@@ -150,7 +150,8 @@ async function fetchLessons() {
   try {
     const { data, error } = await supabaseClient
       .from("lessons")
-      .select("title, lesson_number, description, file_url")
+      .select("title, lesson_number, description, file_url, created_at")
+      .order("created_at", { ascending: false })
     if (error) throw error;
     renderLessons(data || []);
   } catch (error) {
