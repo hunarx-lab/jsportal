@@ -223,7 +223,6 @@ function createLessonCard(lesson) {
     : "Lesson 01";
   const category = lesson.category || "General";
   const createdAt = formatDisplayDate(lesson.created_at);
-  const dateHtml = `<div class="lesson-card__date">Uploaded: ${createdAt}</div>`;
   const fileListHtml = createFileList(lesson);
 
   return `
@@ -233,8 +232,10 @@ function createLessonCard(lesson) {
         <h3 class="lesson-card__title">${title}</h3>
       </div>
       <div class="lesson-card__meta">
-        ${dateHtml}
-        <span class="lesson-card__category">${category}</span>
+        <div class="lesson-card__meta-row">
+          <div class="lesson-card__date">Uploaded: ${createdAt}</div>
+          <span class="lesson-card__category">${category}</span>
+        </div>
         <p class="lesson-card__description">${description}</p>
       </div>
       <div class="lesson-card__footer">
@@ -476,14 +477,19 @@ function getCategories(lessons) {
 function setActiveCategory(category) {
   activeCategory = category;
   document.querySelectorAll(".lesson-filter").forEach((button) => {
-    button.classList.toggle("lesson-filter--active", button.dataset.category === category);
+    button.classList.toggle(
+      "lesson-filter--active",
+      button.dataset.category?.toLowerCase() === category.toLowerCase()
+    );
   });
   updateFiltersAndRender();
 }
 
 function updateFiltersAndRender() {
   const filteredLessons = allLessons.filter((lesson) => {
-    const matchesCategory = activeCategory === "All" || lesson.category === activeCategory;
+    const categoryValue = String(lesson.category || "").toLowerCase();
+    const selectedCategory = activeCategory.toLowerCase();
+    const matchesCategory = selectedCategory === "all" || categoryValue === selectedCategory;
     const searchTerm = lessonSearchInput?.value.trim().toLowerCase() || "";
     const matchesSearch = !searchTerm || (lesson.title || "").toLowerCase().includes(searchTerm);
     return matchesCategory && matchesSearch;
@@ -495,12 +501,16 @@ function updateFiltersAndRender() {
 
 function renderCategoryFilters(categories) {
   if (!lessonFilters) return;
+  const selectedCategory = activeCategory.toLowerCase();
   lessonFilters.innerHTML = categories
-    .map((category) => `
-      <button class="lesson-filter${category === activeCategory ? ' lesson-filter--active' : ''}" type="button" data-category="${category}">
+    .map((category) => {
+      const isActive = category.toLowerCase() === selectedCategory;
+      return `
+      <button class="lesson-filter${isActive ? ' lesson-filter--active' : ''}" type="button" data-category="${category}">
         ${category}
       </button>
-    `)
+    `;
+    })
     .join("");
 }
 
@@ -859,6 +869,15 @@ function attachEvents() {
 
   if (lessonSearchInput) {
     lessonSearchInput.addEventListener("input", () => updateFiltersAndRender());
+  }
+
+  if (lessonFilters) {
+    lessonFilters.addEventListener("click", (event) => {
+      const button = event.target.closest(".lesson-filter");
+      if (!button) return;
+      const category = button.dataset.category || "All";
+      setActiveCategory(category);
+    });
   }
 
   if (lessonsContainer) {
