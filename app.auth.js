@@ -116,6 +116,28 @@ function normalizeLessonFiles(fileData) {
   return [];
 }
 
+async function downloadLesson(fileUrl, fileName) {
+  try {
+    const response = await fetch(fileUrl);
+    if (!response.ok) {
+      throw new Error(`Failed to download file: ${response.status} ${response.statusText}`);
+    }
+
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = fileName || "lesson-file";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.URL.revokeObjectURL(url);
+  } catch (error) {
+    console.error("Lesson download failed:", error);
+    showAuthMessage("Unable to download the lesson file. Please try again.", true);
+  }
+}
+
 function createFileList(lesson) {
   const files = normalizeLessonFiles(lesson.file_url);
 
@@ -148,7 +170,8 @@ function createFileList(lesson) {
                 <a
                   class="lesson-card__download-btn"
                   href="${safeUrl}"
-                  download="${safeName}"
+                  data-download-url="${safeUrl}"
+                  data-download-name="${safeName}"
                 >
                   Download
                 </a>
@@ -614,6 +637,22 @@ async function handleAuthStateChange(_event, session) {
   }
 }
 
+function handleLessonDownloadClick(event) {
+  const downloadButton = event.target.closest(".lesson-card__download-btn");
+  if (!downloadButton || !lessonsContainer?.contains(downloadButton)) return;
+
+  event.preventDefault();
+
+  const fileUrl = downloadButton.dataset.downloadUrl;
+  const fileName = downloadButton.dataset.downloadName;
+  if (!fileUrl) {
+    showAuthMessage("Download URL is not available.", true);
+    return;
+  }
+
+  downloadLesson(fileUrl, fileName);
+}
+
 function attachEvents() {
   if (authForm) {
     authForm.addEventListener("submit", handleAuthSubmit);
@@ -655,6 +694,10 @@ function attachEvents() {
     lessonSearchInput.addEventListener("input", (event) => {
       filterLessons(event.target.value);
     });
+  }
+
+  if (lessonsContainer) {
+    lessonsContainer.addEventListener("click", handleLessonDownloadClick);
   }
 }
 
