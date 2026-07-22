@@ -564,17 +564,17 @@ body.modal-open {
 }
 
 .lesson-card {
-  padding: 20px;
+  padding: 24px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 18px;
 }
 
 .lesson-card__header {
   display: flex;
-  justify-content: space-between;
-  align-items: start;
+  align-items: center;
   gap: 12px;
+  justify-content: flex-start;
 }
 
 .lesson-card__badge {
@@ -589,8 +589,8 @@ body.modal-open {
 
 .lesson-card__title {
   margin: 0;
-  font-size: 1.2rem;
-  line-height: 1.6;
+  font-size: 1.25rem;
+  line-height: 1.4;
   font-weight: 800;
   color: var(--text-primary);
 }
@@ -607,8 +607,22 @@ body.modal-open {
   font-size: 0.95rem;
 }
 
+.lesson-card__category {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  width: fit-content;
+}
+
 .lesson-card__description {
   margin: 0;
+  margin-top: 8px;
+  margin-bottom: 8px;
   color: var(--text-secondary);
   font-size: 0.96rem;
   line-height: 1.8;
@@ -618,10 +632,10 @@ body.modal-open {
   margin-top: auto;
   background: var(--bg-card-hover);
   border-radius: 18px;
-  padding: 14px;
+  padding: 16px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
 }
 
 .lesson-card__file-list {
