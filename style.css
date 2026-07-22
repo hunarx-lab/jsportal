@@ -599,6 +599,18 @@ body.modal-open {
   --error: #b91c1c;
 }
 
+.theme-light .auth-form__submit,
+.theme-light .hero__logout,
+.theme-light .admin-form__submit,
+.theme-light .admin-action-btn,
+.theme-light .hero__link,
+.theme-light .portal-tab--active,
+.theme-light .lesson-filter--active,
+.theme-light .lesson-card__badge,
+.theme-light .lesson-card__download-btn {
+  color: #ffffff;
+}
+
 .theme-dark {
   --bg-primary: #0f172a;
   --bg-secondary: #1e293b;
