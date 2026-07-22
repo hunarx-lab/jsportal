@@ -590,11 +590,11 @@ body.modal-open {
   --bg-primary: #f8fafc;
   --bg-secondary: #ffffff;
   --bg-card-hover: #f1f5f9;
-  --accent: #2563eb;
-  --accent-hover: #1d4ed8;
+  --accent: #1e1e2d;
+  --accent-hover: #2d2d44;
   --text-primary: #0f172a;
   --text-secondary: #475569;
-  --border: #cbd5e1;
+  --border: #d6d6e0;
   --success: #16a34a;
   --error: #b91c1c;
 }
@@ -707,6 +707,7 @@ body.modal-open {
 
 .lesson-card__file-item {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
@@ -727,6 +728,7 @@ body.modal-open {
   gap: 0.75rem;
   min-width: 0;
   flex: 1 1 0;
+  overflow: hidden;
 }
 
 .lesson-card__header {
@@ -844,7 +846,8 @@ body.modal-open {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 220px;
+  max-width: 140px;
+  min-width: 0;
 }
 
 .lesson-card__download-btn {
