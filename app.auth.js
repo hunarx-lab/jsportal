@@ -134,22 +134,6 @@ function normalizeLessonFiles(fileData) {
   return [];
 }
 
-function getSupabaseStoragePath(value) {
-  try {
-    const url = new URL(value);
-    const parts = url.pathname.split("/").filter(Boolean);
-    const publicIndex = parts.indexOf("public");
-    const lessonsIndex = parts.indexOf("lessons");
-    if (publicIndex >= 0 && lessonsIndex > publicIndex) {
-      return parts.slice(lessonsIndex).join("/");
-    }
-    return value;
-  } catch {
-    // value is not a full URL, assume it is already a storage path
-    return value;
-  }
-}
-
 function isFullUrl(value) {
   try {
     new URL(value);
@@ -159,19 +143,25 @@ function isFullUrl(value) {
   }
 }
 
-async function resolvePublicFileUrl(pathOrUrl) {
-  const storagePath = getSupabaseStoragePath(pathOrUrl);
+async function resolveLessonFileUrl(urlOrPath) {
   if (!supabaseClient) {
-    throw new Error("Supabase client unavailable");
+    throw new Error("Supabase client unavailable.");
   }
 
-  if (isFullUrl(storagePath)) {
-    return storagePath;
+  const value = String(urlOrPath || "").trim();
+  if (!value) {
+    throw new Error("No file URL provided.");
   }
 
+  if (isFullUrl(value)) {
+    return value;
+  }
+
+  const storagePath = value.replace(/^\/?(?:public\/)?lessons\//, "");
   const { data, error } = await supabaseClient.storage.from("lessons").getPublicUrl(storagePath);
   if (error || !data?.publicUrl) {
-    throw error || new Error("Unable to resolve public URL for file preview/download.");
+    console.error("Unable to resolve public URL from stored path:", storagePath, error);
+    throw error || new Error("Unable to resolve public file URL.");
   }
 
   return data.publicUrl;
@@ -222,7 +212,6 @@ function createFileList(lesson) {
           ({ url, name }) => {
             const safeUrl = escapeHtml(url);
             const safeName = escapeHtml(name);
-            const safePath = escapeHtml(getSupabaseStoragePath(url));
             return `
               <div class="lesson-card__file-item">
                 <div class="lesson-card__file-meta">
@@ -233,7 +222,7 @@ function createFileList(lesson) {
                   <button
                     class="lesson-card__preview-btn"
                     type="button"
-                    data-preview-path="${safePath}"
+                    data-preview-url="${safeUrl}"
                     data-preview-name="${safeName}"
                   >
                     Preview
@@ -241,7 +230,7 @@ function createFileList(lesson) {
                   <button
                     class="lesson-card__download-btn"
                     type="button"
-                    data-download-path="${safePath}"
+                    data-download-url="${safeUrl}"
                     data-download-name="${safeName}"
                   >
                     Download
@@ -791,26 +780,27 @@ async function handleLessonDownloadClick(event) {
 
   event.preventDefault();
 
-  const filePath = downloadButton.dataset.downloadPath;
+  const rawUrl = downloadButton.dataset.downloadUrl;
   const fileName = downloadButton.dataset.downloadName;
-  if (!filePath) {
+  if (!rawUrl) {
     showAuthMessage("Download URL is not available.", true);
     return;
   }
 
   try {
-    const publicUrl = await resolvePublicFileUrl(filePath);
+    const fileUrl = await resolveLessonFileUrl(rawUrl);
+    console.log("Download attempt for resolved file URL:", fileUrl);
     downloadedFiles.add(fileName);
     localStorage.setItem(STORAGE_DOWNLOADED_KEY, JSON.stringify(Array.from(downloadedFiles)));
     showPortalToast("Downloaded");
-    await downloadLesson(publicUrl, fileName);
+    await downloadLesson(fileUrl, fileName);
   } catch (error) {
-    console.error("Download failed:", error);
-    showAuthMessage("Unable to download the lesson file. Please try again.", true);
+    console.error("Download URL resolution failed:", error);
+    showAuthMessage("Unable to resolve the download link. Please contact your administrator.", true);
   }
 }
 
-async function openPreviewModal(filePath, fileName) {
+async function openPreviewModal(fileUrl, fileName) {
   if (!previewModal || !previewModalTitle || !previewModalBody || !previewDownloadButton) return;
 
   previewModalTitle.textContent = `Preview: ${fileName}`;
@@ -818,34 +808,44 @@ async function openPreviewModal(filePath, fileName) {
   previewModal.hidden = false;
   document.body.classList.add("modal-open");
 
+  if (!fileUrl) {
+    previewModalBody.innerHTML = `<div class="preview-panel">Preview URL is not available.</div>`;
+    return;
+  }
+
   try {
-    const publicUrl = await resolvePublicFileUrl(filePath);
-    previewDownloadButton.href = publicUrl;
+    const resolvedUrl = await resolveLessonFileUrl(fileUrl);
+    console.log("Preview attempt for resolved file URL:", resolvedUrl);
+    previewDownloadButton.href = resolvedUrl;
     previewDownloadButton.download = fileName;
     const extension = fileName.split('.').pop().toLowerCase();
 
     if (["pdf"].includes(extension)) {
-      previewModalBody.innerHTML = `<iframe class="preview-frame" src="${publicUrl}" title="PDF preview"></iframe>`;
+      previewModalBody.innerHTML = `<iframe class="preview-frame" src="${resolvedUrl}" title="PDF preview"></iframe>`;
       return;
     }
 
     if (["png", "jpg", "jpeg", "svg", "gif", "bmp", "webp"].includes(extension)) {
-      previewModalBody.innerHTML = `<div class="preview-panel"><img class="preview-image" src="${publicUrl}" alt="Preview ${fileName}" /></div>`;
+      previewModalBody.innerHTML = `<div class="preview-panel"><img class="preview-image" src="${resolvedUrl}" alt="Preview ${fileName}" /></div>`;
       return;
     }
 
     if (["html", "css", "js", "json", "md", "txt"].includes(extension)) {
-      const response = await fetch(publicUrl);
-      if (!response.ok) throw new Error("Preview could not be loaded.");
-      const text = await response.text();
-      previewModalBody.innerHTML = `<pre class="preview-text">${escapeHtml(text)}</pre>`;
-      return;
+      try {
+        const response = await fetch(resolvedUrl);
+        if (!response.ok) throw new Error("Preview could not be loaded.");
+        const text = await response.text();
+        previewModalBody.innerHTML = `<pre class="preview-text">${escapeHtml(text)}</pre>`;
+        return;
+      } catch (error) {
+        console.error("Preview failed:", error);
+      }
     }
 
     previewModalBody.innerHTML = `<div class="preview-panel">Preview not available for this file type. Use download instead.</div>`;
   } catch (error) {
-    console.error("Preview failed:", error);
-    previewModalBody.innerHTML = `<div class="preview-panel">Preview not available. Use download instead.</div>`;
+    console.error("Preview modal error:", error);
+    previewModalBody.innerHTML = `<div class="preview-panel">Unable to load preview.</div>`;
   }
 }
 
@@ -858,10 +858,10 @@ function closeModal() {
 function handleLessonCardAction(event) {
   const previewButton = event.target.closest(".lesson-card__preview-btn");
   if (previewButton) {
-    const previewPath = previewButton.dataset.previewPath;
+    const previewUrl = previewButton.dataset.previewUrl;
     const previewName = previewButton.dataset.previewName;
-    if (previewPath && previewName) {
-      openPreviewModal(previewPath, previewName);
+    if (previewUrl && previewName) {
+      openPreviewModal(previewUrl, previewName);
     }
     return;
   }

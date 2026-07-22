@@ -184,6 +184,7 @@ async function signInAdmin(event) {
     showAdminScreen();
     await loadLessons();
   } catch (error) {
+    console.error("Login Error:", error);
     showMessage(adminAuthMessage, error.message || 'Sign-in failed.', true);
   }
 }
@@ -234,13 +235,11 @@ async function uploadLesson(event) {
     for (let index = 0; index < selectedFiles.length; index += 1) {
       const file = selectedFiles[index];
       const safeFileName = (file.name || 'lesson-file').replace(/[^a-zA-Z0-9._-]/g, '_');
-      const storagePath = `lessons/${Date.now()}-${index}-${safeFileName}`;
-      const contentDispositionFileName = (file.name || safeFileName).replace(/"/g, '');
+      const storagePath = `${Date.now()}-${index}-${safeFileName}`;
 
       const { error: uploadError } = await supabaseClient.storage.from('lessons').upload(storagePath, file, {
-        contentDisposition: `attachment; filename="${contentDispositionFileName}"; filename*=UTF-8''${encodeURIComponent(contentDispositionFileName)}`,
         cacheControl: 'max-age=0, s-maxage=0, no-cache, no-store, must-revalidate',
-        contentType: 'application/octet-stream',
+        contentType: file.type || 'application/octet-stream',
         upsert: true
       });
       if (uploadError) throw uploadError;
@@ -309,13 +308,11 @@ async function uploadFilesToStorage(files) {
   for (let index = 0; index < files.length; index += 1) {
     const file = files[index];
     const safeFileName = (file.name || 'lesson-file').replace(/[^a-zA-Z0-9._-]/g, '_');
-    const storagePath = `lessons/${Date.now()}-${index}-${safeFileName}`;
-    const contentDispositionFileName = (file.name || safeFileName).replace(/"/g, '');
+    const storagePath = `${Date.now()}-${index}-${safeFileName}`;
 
     const { error: uploadError } = await supabaseClient.storage.from('lessons').upload(storagePath, file, {
-      contentDisposition: `attachment; filename="${contentDispositionFileName}"; filename*=UTF-8''${encodeURIComponent(contentDispositionFileName)}`,
       cacheControl: 'max-age=0, s-maxage=0, no-cache, no-store, must-revalidate',
-      contentType: 'application/octet-stream',
+      contentType: file.type || 'application/octet-stream',
       upsert: true
     });
     if (uploadError) throw uploadError;
