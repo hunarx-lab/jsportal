@@ -23,6 +23,7 @@ const lessonFileInput = document.getElementById('lessonFileInput');
 const editTitleInput = document.getElementById('editTitleInput');
 const editSessionInput = document.getElementById('editSessionInput');
 const editDescriptionInput = document.getElementById('editDescriptionInput');
+const editLessonFileInput = document.getElementById('editLessonFileInput');
 const cancelEditBtn = document.getElementById('cancelEditBtn');
 const logoutButton = document.getElementById('logoutBtn');
 
@@ -128,7 +129,7 @@ async function loadLessons() {
   try {
     const { data, error } = await supabaseClient
       .from('lessons')
-      .select('id, title, lesson_number, description, file_url, created_at, storage_path')
+      .select('id, title, lesson_number, description, file_url, created_at, updated_at, storage_path')
       .order('created_at', { ascending: false });
 
     if (error) throw error;
@@ -240,7 +241,8 @@ async function uploadLesson(event) {
       description,
       file_url: fileUrlEntries,
       storage_path: storagePaths,
-      created_at: lessonDate
+      created_at: lessonDate,
+      updated_at: lessonDate
     }] );
 
     if (lessonsError) throw lessonsError;
@@ -276,26 +278,93 @@ function cancelEdit() {
   editForm.reset();
 }
 
+async function uploadFilesToStorage(files) {
+  const uploadedPaths = [];
+  const fileUrlEntries = [];
+  const storagePaths = [];
+
+  for (let index = 0; index < files.length; index += 1) {
+    const file = files[index];
+    const safeFileName = (file.name || 'lesson-file').replace(/[^a-zA-Z0-9._-]/g, '_');
+    const storagePath = `lessons/${Date.now()}-${index}-${safeFileName}`;
+    const contentDispositionFileName = (file.name || safeFileName).replace(/"/g, '');
+
+    const { error: uploadError } = await supabaseClient.storage.from('lessons').upload(storagePath, file, {
+      contentDisposition: `attachment; filename="${contentDispositionFileName}"; filename*=UTF-8''${encodeURIComponent(contentDispositionFileName)}`,
+      cacheControl: 'max-age=0, s-maxage=0, no-cache, no-store, must-revalidate',
+      contentType: 'application/octet-stream',
+      upsert: true
+    });
+    if (uploadError) throw uploadError;
+
+    const { data: publicUrlData, error: publicUrlError } = supabaseClient.storage.from('lessons').getPublicUrl(storagePath);
+    if (publicUrlError) throw publicUrlError;
+
+    const publicUrl = publicUrlData?.publicUrl;
+    if (!publicUrl) throw new Error(`Unable to generate public URL for ${file.name}`);
+
+    uploadedPaths.push(storagePath);
+    fileUrlEntries.push({ name: file.name, url: publicUrl });
+    storagePaths.push(storagePath);
+  }
+
+  return { uploadedPaths, fileUrlEntries, storagePaths };
+}
+
 async function saveEditLesson(event) {
   event.preventDefault();
   if (!supabaseClient || !editingLessonId) return;
   if (!(await ensureAdminSessionValid())) return;
 
+  const replacementFiles = Array.from(editLessonFileInput?.files || []);
+  const updateData = {
+    title: editTitleInput.value.trim(),
+    lesson_number: Number(editSessionInput.value),
+    description: editDescriptionInput.value.trim(),
+    updated_at: new Date().toISOString()
+  };
+
+  let uploadedPaths = [];
+  let newStoragePaths = [];
+  let newFileUrlEntries = [];
+  let oldStoragePaths = [];
+
   try {
+    if (replacementFiles.length) {
+      const lesson = lessons.find((item) => item.id === editingLessonId);
+      oldStoragePaths = Array.isArray(lesson.storage_path) ? lesson.storage_path : lesson.storage_path ? [lesson.storage_path] : [];
+
+      const uploadResult = await uploadFilesToStorage(replacementFiles);
+      uploadedPaths = uploadResult.uploadedPaths;
+      newStoragePaths = uploadResult.storagePaths;
+      newFileUrlEntries = uploadResult.fileUrlEntries;
+
+      updateData.file_url = newFileUrlEntries;
+      updateData.storage_path = newStoragePaths;
+    }
+
     const { error } = await supabaseClient
       .from('lessons')
-      .update({
-        title: editTitleInput.value.trim(),
-        lesson_number: Number(editSessionInput.value),
-        description: editDescriptionInput.value.trim()
-      })
+      .update(updateData)
       .eq('id', editingLessonId);
 
     if (error) throw error;
+
+    if (replacementFiles.length && oldStoragePaths.length) {
+      await supabaseClient.storage.from('lessons').remove(oldStoragePaths);
+    }
+
     showMessage(adminAuthMessage, 'Lesson updated successfully.', false);
     cancelEdit();
     await loadLessons();
   } catch (error) {
+    if (uploadedPaths.length) {
+      try {
+        await supabaseClient.storage.from('lessons').remove(uploadedPaths);
+      } catch (cleanupError) {
+        console.warn('Cleanup after failed edit upload failed:', cleanupError);
+      }
+    }
     showMessage(adminAuthMessage, error.message || 'Update failed.', true);
   }
 }
