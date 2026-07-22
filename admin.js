@@ -135,7 +135,7 @@ async function loadLessons() {
   try {
     const { data, error } = await supabaseClient
       .from('lessons')
-      .select('id, title, lesson_number, description, file_url, created_at, storage_path')
+      .select('id, title, lesson_number, description, category, file_url, created_at, storage_path')
       .order('created_at', { ascending: false });
 
     if (error) throw error;
@@ -145,7 +145,7 @@ async function loadLessons() {
     try {
       const { data, error: fallbackError } = await supabaseClient
         .from('lessons')
-        .select('id, title, lesson_number, description, file_url, created_at')
+        .select('id, title, lesson_number, description, category, file_url, created_at')
         .order('created_at', { ascending: false });
 
       if (fallbackError) throw fallbackError;
