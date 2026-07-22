@@ -134,6 +134,49 @@ function normalizeLessonFiles(fileData) {
   return [];
 }
 
+function getSupabaseStoragePath(value) {
+  try {
+    const url = new URL(value);
+    const parts = url.pathname.split("/").filter(Boolean);
+    const publicIndex = parts.indexOf("public");
+    const lessonsIndex = parts.indexOf("lessons");
+    if (publicIndex >= 0 && lessonsIndex > publicIndex) {
+      return parts.slice(lessonsIndex).join("/");
+    }
+    return value;
+  } catch {
+    // value is not a full URL, assume it is already a storage path
+    return value;
+  }
+}
+
+function isFullUrl(value) {
+  try {
+    new URL(value);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function resolvePublicFileUrl(pathOrUrl) {
+  const storagePath = getSupabaseStoragePath(pathOrUrl);
+  if (!supabaseClient) {
+    throw new Error("Supabase client unavailable");
+  }
+
+  if (isFullUrl(storagePath)) {
+    return storagePath;
+  }
+
+  const { data, error } = await supabaseClient.storage.from("lessons").getPublicUrl(storagePath);
+  if (error || !data?.publicUrl) {
+    throw error || new Error("Unable to resolve public URL for file preview/download.");
+  }
+
+  return data.publicUrl;
+}
+
 async function downloadLesson(fileUrl, fileName) {
   try {
     const response = await fetch(fileUrl);
@@ -179,6 +222,7 @@ function createFileList(lesson) {
           ({ url, name }) => {
             const safeUrl = escapeHtml(url);
             const safeName = escapeHtml(name);
+            const safePath = escapeHtml(getSupabaseStoragePath(url));
             return `
               <div class="lesson-card__file-item">
                 <div class="lesson-card__file-meta">
@@ -189,19 +233,19 @@ function createFileList(lesson) {
                   <button
                     class="lesson-card__preview-btn"
                     type="button"
-                    data-preview-url="${safeUrl}"
+                    data-preview-path="${safePath}"
                     data-preview-name="${safeName}"
                   >
                     Preview
                   </button>
-                  <a
+                  <button
                     class="lesson-card__download-btn"
-                    href="${safeUrl}"
-                    data-download-url="${safeUrl}"
+                    type="button"
+                    data-download-path="${safePath}"
                     data-download-name="${safeName}"
                   >
                     Download
-                  </a>
+                  </button>
                 </div>
               </div>
             `;
@@ -741,62 +785,66 @@ async function handleAuthStateChange(_event, session) {
   }
 }
 
-function handleLessonDownloadClick(event) {
+async function handleLessonDownloadClick(event) {
   const downloadButton = event.target.closest(".lesson-card__download-btn");
   if (!downloadButton || !lessonsContainer?.contains(downloadButton)) return;
 
   event.preventDefault();
 
-  const fileUrl = downloadButton.dataset.downloadUrl;
+  const filePath = downloadButton.dataset.downloadPath;
   const fileName = downloadButton.dataset.downloadName;
-  if (!fileUrl) {
+  if (!filePath) {
     showAuthMessage("Download URL is not available.", true);
     return;
   }
 
-  downloadedFiles.add(fileName);
-  localStorage.setItem(STORAGE_DOWNLOADED_KEY, JSON.stringify(Array.from(downloadedFiles)));
-  showPortalToast("Downloaded");
-  downloadLesson(fileUrl, fileName);
+  try {
+    const publicUrl = await resolvePublicFileUrl(filePath);
+    downloadedFiles.add(fileName);
+    localStorage.setItem(STORAGE_DOWNLOADED_KEY, JSON.stringify(Array.from(downloadedFiles)));
+    showPortalToast("Downloaded");
+    await downloadLesson(publicUrl, fileName);
+  } catch (error) {
+    console.error("Download failed:", error);
+    showAuthMessage("Unable to download the lesson file. Please try again.", true);
+  }
 }
 
-function openPreviewModal(fileUrl, fileName) {
+async function openPreviewModal(filePath, fileName) {
   if (!previewModal || !previewModalTitle || !previewModalBody || !previewDownloadButton) return;
 
   previewModalTitle.textContent = `Preview: ${fileName}`;
-  previewDownloadButton.href = fileUrl;
-  previewDownloadButton.download = fileName;
   previewModalBody.innerHTML = `<div class="preview-panel">Loading preview...</div>`;
   previewModal.hidden = false;
   document.body.classList.add("modal-open");
 
-  if (fileUrl.toLowerCase().endsWith(".pdf")) {
-    previewModalBody.innerHTML = `<iframe class="preview-frame" src="${fileUrl}" title="PDF preview"></iframe>`;
-    return;
-  }
-
   try {
-    fetch(fileUrl)
-      .then((response) => {
-        if (!response.ok) throw new Error("Preview could not be loaded.");
-        const extension = fileName.split('.').pop().toLowerCase();
-        if (["html", "css", "js", "json", "md", "txt"].includes(extension)) {
-          return response.text();
-        }
-        return response.blob();
-      })
-      .then((data) => {
-        if (typeof data === "string") {
-          const safeContent = escapeHtml(data);
-          previewModalBody.innerHTML = `<pre class="preview-text">${safeContent}</pre>`;
-        } else {
-          previewModalBody.innerHTML = `<div class="preview-panel">Preview not available for this file type. Use download instead.</div>`;
-        }
-      })
-      .catch(() => {
-        previewModalBody.innerHTML = `<div class="preview-panel">Preview not available. Use download instead.</div>`;
-      });
-  } catch {
+    const publicUrl = await resolvePublicFileUrl(filePath);
+    previewDownloadButton.href = publicUrl;
+    previewDownloadButton.download = fileName;
+    const extension = fileName.split('.').pop().toLowerCase();
+
+    if (["pdf"].includes(extension)) {
+      previewModalBody.innerHTML = `<iframe class="preview-frame" src="${publicUrl}" title="PDF preview"></iframe>`;
+      return;
+    }
+
+    if (["png", "jpg", "jpeg", "svg", "gif", "bmp", "webp"].includes(extension)) {
+      previewModalBody.innerHTML = `<div class="preview-panel"><img class="preview-image" src="${publicUrl}" alt="Preview ${fileName}" /></div>`;
+      return;
+    }
+
+    if (["html", "css", "js", "json", "md", "txt"].includes(extension)) {
+      const response = await fetch(publicUrl);
+      if (!response.ok) throw new Error("Preview could not be loaded.");
+      const text = await response.text();
+      previewModalBody.innerHTML = `<pre class="preview-text">${escapeHtml(text)}</pre>`;
+      return;
+    }
+
+    previewModalBody.innerHTML = `<div class="preview-panel">Preview not available for this file type. Use download instead.</div>`;
+  } catch (error) {
+    console.error("Preview failed:", error);
     previewModalBody.innerHTML = `<div class="preview-panel">Preview not available. Use download instead.</div>`;
   }
 }
@@ -810,10 +858,10 @@ function closeModal() {
 function handleLessonCardAction(event) {
   const previewButton = event.target.closest(".lesson-card__preview-btn");
   if (previewButton) {
-    const previewUrl = previewButton.dataset.previewUrl;
+    const previewPath = previewButton.dataset.previewPath;
     const previewName = previewButton.dataset.previewName;
-    if (previewUrl && previewName) {
-      openPreviewModal(previewUrl, previewName);
+    if (previewPath && previewName) {
+      openPreviewModal(previewPath, previewName);
     }
     return;
   }
