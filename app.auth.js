@@ -533,7 +533,7 @@ async function fetchLessons() {
   try {
     const { data, error } = await supabaseClient
       .from("lessons")
-      .select("title, lesson_number, description, file_url, created_at, category")
+      .select("id, title, lesson_number, description, file_url, created_at, category")
       .order("lesson_number", { ascending: true });
 
     if (error) throw error;
