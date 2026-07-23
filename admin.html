@@ -163,70 +163,21 @@
             </div>
           </section>
 
-          <section class="admin-card">
-            <h2>Recommended Supabase RLS policies</h2>
-            <p class="admin-help">
-              Apply these policies in the Supabase Dashboard for the lessons table and the lessons storage bucket.
-            </p>
-            <div class="admin-code">
-              -- Lessons table policies
-              create policy "Admins can manage lessons"
-              on public.lessons
-              for all
-              to authenticated
-              using (
-                exists (
-                  select 1 from public.profiles p
-                  where p.id = auth.uid()
-                    and p.email = 'your_admin_email@example.com'
-                )
-              )
-              with check (
-                exists (
-                  select 1 from public.profiles p
-                  where p.id = auth.uid()
-                    and p.email = 'your_admin_email@example.com'
-                )
-              );
-
-              create policy "Authenticated users can read lessons"
-              on public.lessons
-              for select
-              to authenticated
-              using (true);
-
-              -- Storage bucket policies
-              create policy "Admins can upload lesson files"
-              on storage.objects
-              for insert
-              to authenticated
-              with check (
-                bucket_id = 'lessons'
-                and exists (
-                  select 1 from public.profiles p
-                  where p.id = auth.uid()
-                    and p.email = 'your_admin_email@example.com'
-                )
-              );
-
-              create policy "Admins can update and delete lesson files"
-              on storage.objects
-              for update, delete
-              to authenticated
-              using (
-                bucket_id = 'lessons'
-                and exists (
-                  select 1 from public.profiles p
-                  where p.id = auth.uid()
-                    and p.email = 'your_admin_email@example.com'
-                )
-              );
-
-              create policy "Authenticated users can view lesson files"
-              on storage.objects
-              for select
-              to authenticated
-              using (bucket_id = 'lessons');
+          <section id="activitySection" class="admin-card">
+            <div class="admin-table-header">
+              <h2>Activity</h2>
+              <p class="admin-table-meta">Student logins, lesson views, and downloads.</p>
+            </div>
+            <div id="activityMessage" class="auth-form__message" role="status"></div>
+            <div class="admin-grid">
+              <div class="admin-card admin-card--subtle">
+                <h3>Most recent student logins</h3>
+                <ul id="activityStudentsList" class="admin-activity-list"></ul>
+              </div>
+              <div class="admin-card admin-card--subtle">
+                <h3>Lesson activity overview</h3>
+                <ul id="activityLessonsList" class="admin-activity-list"></ul>
+              </div>
             </div>
           </section>
         </section>

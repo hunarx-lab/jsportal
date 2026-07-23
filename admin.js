@@ -30,6 +30,9 @@ const uploadMessage = document.getElementById('uploadMessage');
 const editMessage = document.getElementById('editMessage');
 const cancelEditBtn = document.getElementById('cancelEditBtn');
 const logoutButton = document.getElementById('logoutBtn');
+const activityStudentsList = document.getElementById('activityStudentsList');
+const activityLessonsList = document.getElementById('activityLessonsList');
+const activityMessage = document.getElementById('activityMessage');
 
 let lessons = [];
 let editingLessonId = null;
@@ -45,6 +48,15 @@ function clearMessage(element) {
   if (!element) return;
   element.textContent = '';
   element.className = 'auth-form__message';
+}
+
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 function isAdminUser(user) {
@@ -158,6 +170,132 @@ async function loadLessons() {
   }
 }
 
+function renderActivityStudents(loginRows, studentProfiles) {
+  if (!activityStudentsList) return;
+
+  if (!loginRows.length) {
+    activityStudentsList.innerHTML = '<li class="empty-state">No student login activity yet.</li>';
+    return;
+  }
+
+  activityStudentsList.innerHTML = loginRows.map((entry) => {
+    const profile = studentProfiles.get(entry.student_id) || {};
+    const studentLabel = profile.full_name || profile.email || entry.student_id;
+    const loginTime = entry.created_at ? new Date(entry.created_at).toLocaleString('en-US') : 'Unknown time';
+    return `<li class="admin-activity-item"><strong>${escapeHtml(studentLabel)}</strong><span>Last login: ${escapeHtml(loginTime)}</span></li>`;
+  }).join('');
+}
+
+function renderActivityLessons(lessonStats) {
+  if (!activityLessonsList) return;
+
+  if (!lessonStats.length) {
+    activityLessonsList.innerHTML = '<li class="empty-state">No lesson activity recorded yet.</li>';
+    return;
+  }
+
+  activityLessonsList.innerHTML = lessonStats.map((entry) => {
+    const students = entry.students.length ? entry.students.join(', ') : 'No student activity';
+    return `<li class="admin-activity-item"><strong>${escapeHtml(entry.title)}</strong><span>Viewed: ${entry.views} • Downloaded: ${entry.downloads} • Students: ${escapeHtml(students)}</span></li>`;
+  }).join('');
+}
+
+async function loadActivitySummary() {
+  if (!supabaseClient || !currentUser) return;
+
+  try {
+    const { data: activityData, error: activityError } = await supabaseClient
+      .from('activity_log')
+      .select('id, student_id, lesson_id, action_type, created_at')
+      .order('created_at', { ascending: false });
+
+    if (activityError) throw activityError;
+
+    const rows = activityData || [];
+    const uniqueStudentIds = [...new Set(rows.map((row) => row.student_id).filter(Boolean))];
+    const uniqueLessonIds = [...new Set(rows.map((row) => row.lesson_id).filter(Boolean))];
+    const profileMap = new Map();
+    const lessonMap = new Map();
+
+    if (uniqueStudentIds.length) {
+      const { data: profiles, error: profilesError } = await supabaseClient
+        .from('profiles')
+        .select('id, full_name, email')
+        .in('id', uniqueStudentIds);
+
+      if (profilesError) throw profilesError;
+      (profiles || []).forEach((profile) => profileMap.set(profile.id, profile));
+    }
+
+    if (uniqueLessonIds.length) {
+      const { data: lessonsData, error: lessonsError } = await supabaseClient
+        .from('lessons')
+        .select('id, title, lesson_number')
+        .in('id', uniqueLessonIds);
+
+      if (lessonsError) throw lessonsError;
+      (lessonsData || []).forEach((lesson) => lessonMap.set(lesson.id, lesson));
+    }
+
+    const latestLogins = new Map();
+    rows.forEach((row) => {
+      if (row.action_type !== 'login' || !row.student_id) return;
+      const existing = latestLogins.get(row.student_id);
+      if (!existing || new Date(row.created_at) > new Date(existing.created_at)) {
+        latestLogins.set(row.student_id, row);
+      }
+    });
+
+    const loginRows = Array.from(latestLogins.values()).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    renderActivityStudents(loginRows, profileMap);
+
+    const lessonStats = new Map();
+    rows.forEach((row) => {
+      if (!row.lesson_id) return;
+      const lesson = lessonMap.get(row.lesson_id);
+      if (!lesson) return;
+
+      const existing = lessonStats.get(row.lesson_id) || {
+        lesson_id: row.lesson_id,
+        title: lesson.title || `Lesson ${lesson.lesson_number || row.lesson_id}`,
+        views: 0,
+        downloads: 0,
+        students: new Set()
+      };
+
+      if (row.action_type === 'view') {
+        existing.views += 1;
+      }
+
+      if (row.action_type === 'download') {
+        existing.downloads += 1;
+      }
+
+      if (row.student_id) {
+        const profile = profileMap.get(row.student_id) || {};
+        const studentLabel = profile.full_name || profile.email || row.student_id;
+        existing.students.add(studentLabel);
+      }
+
+      lessonStats.set(row.lesson_id, existing);
+    });
+
+    const activityLessonEntries = Array.from(lessonStats.values())
+      .map((entry) => ({
+        ...entry,
+        students: Array.from(entry.students).sort((a, b) => a.localeCompare(b))
+      }))
+      .sort((a, b) => a.title.localeCompare(b.title));
+
+    renderActivityLessons(activityLessonEntries);
+  } catch (error) {
+    console.error('Activity summary failed to load:', error);
+    if (activityMessage) {
+      showMessage(activityMessage, 'Unable to load activity data right now.', true);
+    }
+  }
+}
+
 async function signInAdmin(event) {
   event.preventDefault();
   clearMessage(adminAuthMessage);
@@ -182,7 +320,7 @@ async function signInAdmin(event) {
 
     currentUser = data.user;
     showAdminScreen();
-    await loadLessons();
+    await Promise.all([loadLessons(), loadActivitySummary()]);
   } catch (error) {
     console.error("Login Error:", error);
     showMessage(adminAuthMessage, error.message || 'Sign-in failed.', true);
@@ -447,7 +585,7 @@ async function initializeAdmin() {
     }
     currentUser = session.user;
     showAdminScreen();
-    await loadLessons();
+    await Promise.all([loadLessons(), loadActivitySummary()]);
   } else {
     showLoginScreen();
   }

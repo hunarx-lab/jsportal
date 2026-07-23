@@ -50,6 +50,7 @@ const portalTabs = Array.from(document.querySelectorAll(".portal-tab"));
 const STORAGE_THEME_KEY = "jsPortalTheme";
 const STORAGE_DOWNLOADED_KEY = "jsPortalDownloadedFiles";
 let authMode = "login";
+let currentStudentId = null;
 let allLessons = [];
 let activeCategory = "All";
 let activeTab = "lessons";
@@ -168,6 +169,28 @@ async function resolveLessonFileUrl(urlOrPath) {
   return data.publicUrl;
 }
 
+async function logActivityEvent(studentId, lessonId, actionType) {
+  if (!supabaseClient || !studentId || !["login", "view", "download"].includes(actionType)) {
+    return;
+  }
+
+  try {
+    const { error } = await supabaseClient.from("activity_log").insert([
+      {
+        student_id: studentId,
+        lesson_id: lessonId || null,
+        action_type: actionType
+      }
+    ]);
+
+    if (error) {
+      throw error;
+    }
+  } catch (error) {
+    console.warn(`Activity logging failed for ${actionType}:`, error);
+  }
+}
+
 async function downloadLesson(fileUrl, fileName) {
   try {
     const response = await fetch(fileUrl);
@@ -223,6 +246,7 @@ function createFileList(lesson) {
                   <button
                     class="lesson-card__preview-btn"
                     type="button"
+                    data-lesson-id="${lesson.id ?? ""}"
                     data-preview-url="${safeUrl}"
                     data-preview-name="${safeName}"
                   >
@@ -231,6 +255,7 @@ function createFileList(lesson) {
                   <button
                     class="lesson-card__download-btn"
                     type="button"
+                    data-lesson-id="${lesson.id ?? ""}"
                     data-download-url="${safeUrl}"
                     data-download-name="${safeName}"
                   >
@@ -711,6 +736,8 @@ async function handleLogin(event) {
       return;
     }
 
+    currentStudentId = user.id;
+    await logActivityEvent(user.id, null, "login");
     setStudentName(profileData?.full_name || "...");
     showPortalScreen();
     await fetchLessons();
@@ -741,12 +768,14 @@ async function handleLogout() {
     console.error("Logout failed:", error);
   }
 
+  currentStudentId = null;
   showAuthScreen();
   setAuthMode("login");
 }
 
 async function handleAuthStateChange(_event, session) {
   if (!session) {
+    currentStudentId = null;
     showAuthScreen();
     return;
   }
@@ -757,6 +786,7 @@ async function handleAuthStateChange(_event, session) {
 
   try {
     const user = session.user;
+    currentStudentId = user?.id || null;
     const { data: profileData, error } = await supabaseClient
       .from("profiles")
       .select("full_name, is_approved")
@@ -770,6 +800,7 @@ async function handleAuthStateChange(_event, session) {
       return;
     }
 
+    currentStudentId = user.id;
     setStudentName(profileData?.full_name || "...");
     showPortalScreen();
     await fetchLessons();
@@ -787,6 +818,7 @@ async function handleLessonDownloadClick(event) {
 
   const rawUrl = downloadButton.dataset.downloadUrl;
   const fileName = downloadButton.dataset.downloadName;
+  const lessonId = Number(downloadButton.dataset.lessonId || "");
   if (!rawUrl) {
     showAuthMessage("Download URL is not available.", true);
     return;
@@ -799,19 +831,22 @@ async function handleLessonDownloadClick(event) {
     localStorage.setItem(STORAGE_DOWNLOADED_KEY, JSON.stringify(Array.from(downloadedFiles)));
     showPortalToast("Downloaded");
     await downloadLesson(fileUrl, fileName);
+    await logActivityEvent(currentStudentId, Number.isFinite(lessonId) ? lessonId : null, "download");
   } catch (error) {
     console.error("Download URL resolution failed:", error);
     showAuthMessage("Unable to resolve the download link. Please contact your administrator.", true);
   }
 }
 
-async function openPreviewModal(fileUrl, fileName) {
+async function openPreviewModal(fileUrl, fileName, lessonId) {
   if (!previewModal || !previewModalTitle || !previewModalBody || !previewDownloadButton) return;
 
   previewModalTitle.textContent = `Preview: ${fileName}`;
   previewModalBody.innerHTML = `<div class="preview-panel">Loading preview...</div>`;
   previewModal.hidden = false;
   document.body.classList.add("modal-open");
+
+  await logActivityEvent(currentStudentId, Number.isFinite(Number(lessonId)) ? Number(lessonId) : null, "view");
 
   if (!fileUrl) {
     previewModalBody.innerHTML = `<div class="preview-panel">Preview URL is not available.</div>`;
@@ -869,8 +904,9 @@ function handleLessonCardAction(event) {
   if (previewButton) {
     const previewUrl = previewButton.dataset.previewUrl;
     const previewName = previewButton.dataset.previewName;
+    const lessonId = previewButton.dataset.lessonId;
     if (previewUrl && previewName) {
-      openPreviewModal(previewUrl, previewName);
+      openPreviewModal(previewUrl, previewName, lessonId);
     }
     return;
   }

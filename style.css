@@ -1016,6 +1016,38 @@ body.modal-open {
   gap: 16px;
 }
 
+.admin-card--subtle {
+  background: var(--bg-card-hover);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+}
+
+.admin-activity-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 12px;
+}
+
+.admin-activity-item {
+  display: grid;
+  gap: 4px;
+  padding: 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.admin-activity-item strong {
+  color: var(--text-primary);
+}
+
+.admin-activity-item span {
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+}
+
 .admin-table-wrapper {
   padding: 16px;
   overflow-x: auto;
