@@ -45,17 +45,23 @@
       <div id="portalToast" class="portal-toast" aria-live="polite" hidden></div>
 
       <main class="content">
-        <section class="portal-tabs" role="tablist" aria-label="Dashboard tabs">
+        <nav class="portal-tabs" role="tablist" aria-label="Dashboard tabs">
           <button class="portal-tab portal-tab--active" data-tab="lessons" type="button">Daily Lessons</button>
-          <button class="portal-tab" data-tab="assignments" type="button">Assignments</button>
-          <button class="portal-tab" data-tab="quizzes" type="button">Quizzes</button>
-          <button class="portal-tab" data-tab="announcements" type="button">Announcements</button>
-        </section>
+          <button class="portal-tab portal-tab--disabled" data-tab="assignments" data-disabled="true" type="button" aria-disabled="true">
+            Assignments <span class="tab-badge">Coming Soon</span>
+          </button>
+          <button class="portal-tab portal-tab--disabled" data-tab="quizzes" data-disabled="true" type="button" aria-disabled="true">
+            Quizzes <span class="tab-badge">Coming Soon</span>
+          </button>
+          <button class="portal-tab portal-tab--disabled" data-tab="announcements" data-disabled="true" type="button" aria-disabled="true">
+            Announcements <span class="tab-badge">Coming Soon</span>
+          </button>
+        </nav>
 
         <section id="placeholderContent" class="placeholder-panel" hidden>
           <div class="placeholder-panel__content">
-            <h2>Coming soon</h2>
-            <p>We are building this section for future student assignments, quizzes, and announcements.</p>
+            <h2 id="placeholderTitle">Coming soon</h2>
+            <p id="placeholderDescription">We are building this section for future student assignments, quizzes, and announcements.</p>
           </div>
         </section>
 

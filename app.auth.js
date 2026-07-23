@@ -895,11 +895,37 @@ function toggleTheme() {
 function handleTabClick(event) {
   const button = event.target.closest(".portal-tab");
   if (!button) return;
+
   activeTab = button.dataset.tab || "lessons";
   portalTabs.forEach((tab) => tab.classList.toggle("portal-tab--active", tab === button));
+
   const isLessonsTab = activeTab === "lessons";
   if (lessonsSection) lessonsSection.hidden = !isLessonsTab;
-  if (placeholderContent) placeholderContent.hidden = isLessonsTab;
+
+  if (placeholderContent) {
+    placeholderContent.hidden = isLessonsTab;
+
+    if (!isLessonsTab) {
+      const titleElement = placeholderContent.querySelector("#placeholderTitle");
+      const descElement = placeholderContent.querySelector("#placeholderDescription");
+      let title = "Coming soon";
+      let description = "We are building this section for future student assignments, quizzes, and announcements.";
+
+      if (activeTab === "assignments") {
+        title = "Assignments coming soon";
+        description = "This section will let you view and submit assignments once it is ready.";
+      } else if (activeTab === "quizzes") {
+        title = "Quizzes coming soon";
+        description = "Quizzes will appear here when the section is launched.";
+      } else if (activeTab === "announcements") {
+        title = "Announcements coming soon";
+        description = "Important announcements will be available here soon.";
+      }
+
+      if (titleElement) titleElement.textContent = title;
+      if (descElement) descElement.textContent = description;
+    }
+  }
 }
 
 function attachEvents() {
