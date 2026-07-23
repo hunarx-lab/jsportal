@@ -40,6 +40,7 @@ const lessonsSection = document.getElementById("lessonsSection");
 const previewModal = document.getElementById("previewModal");
 const previewModalTitle = document.getElementById("previewModalTitle");
 const previewModalBody = document.getElementById("previewModalBody");
+const previewOpenButton = document.getElementById("previewOpenButton");
 const previewDownloadButton = document.getElementById("previewDownloadButton");
 const portalToast = document.getElementById("portalToast");
 const closePreviewModal = document.getElementById("closePreviewModal");
@@ -818,10 +819,14 @@ async function openPreviewModal(fileUrl, fileName) {
     console.log("Preview attempt for resolved file URL:", resolvedUrl);
     previewDownloadButton.href = resolvedUrl;
     previewDownloadButton.download = fileName;
+    if (previewOpenButton) {
+      previewOpenButton.href = resolvedUrl;
+    }
     const extension = fileName.split('.').pop().toLowerCase();
 
     if (["pdf"].includes(extension)) {
-      previewModalBody.innerHTML = `<iframe class="preview-frame" src="${resolvedUrl}" title="PDF preview"></iframe>`;
+      const previewUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(resolvedUrl)}&embedded=true`;
+      previewModalBody.innerHTML = `<iframe class="preview-frame" src="${previewUrl}" title="PDF preview"></iframe>`;
       return;
     }
 

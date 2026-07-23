@@ -527,7 +527,7 @@ select {
 
 .preview-frame {
   width: 100%;
-  height: 70vh;
+  height: 75vh;
   border: none;
   border-radius: 18px;
   background: var(--bg-primary);
