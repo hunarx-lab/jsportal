@@ -76,11 +76,17 @@ function createLessonCard(lesson) {
 }
 
 function renderLessons(lessons) {
-  if (!lessons || !lessons.length) {
+  const sortedLessons = (lessons || []).slice().sort((a, b) => {
+    const lessonNumberA = Number(a.lesson_number ?? 0);
+    const lessonNumberB = Number(b.lesson_number ?? 0);
+    return lessonNumberA - lessonNumberB;
+  });
+
+  if (!sortedLessons.length) {
     lessonsContainer.innerHTML = '<div class="empty-state">No lessons available yet.</div>';
     return;
   }
-  lessonsContainer.innerHTML = lessons.map(createLessonCard).join("");
+  lessonsContainer.innerHTML = sortedLessons.map(createLessonCard).join("");
 }
 
 let authMode = "login";
@@ -151,7 +157,7 @@ async function fetchLessons() {
     const { data, error } = await supabaseClient
       .from("lessons")
       .select("title, lesson_number, description, file_url, created_at")
-      .order("created_at", { ascending: false })
+      .order("lesson_number", { ascending: true });
     if (error) throw error;
     renderLessons(data || []);
   } catch (error) {

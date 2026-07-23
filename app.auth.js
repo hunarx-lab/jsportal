@@ -277,7 +277,11 @@ function createLessonCard(lesson) {
 }
 
 function renderLessons(lessons) {
-  const visibleLessons = lessons || [];
+  const visibleLessons = (lessons || []).slice().sort((a, b) => {
+    const lessonNumberA = Number(a.lesson_number ?? 0);
+    const lessonNumberB = Number(b.lesson_number ?? 0);
+    return lessonNumberA - lessonNumberB;
+  });
 
   if (!visibleLessons.length) {
     lessonsContainer.innerHTML = '<div class="empty-state">No lessons found.</div>';
@@ -505,7 +509,7 @@ async function fetchLessons() {
     const { data, error } = await supabaseClient
       .from("lessons")
       .select("title, lesson_number, description, file_url, created_at, category")
-      .order("created_at", { ascending: false });
+      .order("lesson_number", { ascending: true });
 
     if (error) throw error;
     allLessons = data || [];
